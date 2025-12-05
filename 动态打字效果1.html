@@ -1,0 +1,145 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>文字输入动画-jq22.com</title>
+<script src="http://www.jq22.com/jquery/jquery-1.10.2.js"></script>
+<style>
+@import url("http://fonts.googleapis.com/css?family=Inconsolata:700");
+
+body {
+  background-color: #fff;
+  color: #7b0b0b;
+  display: -webkit-box;
+  display: -ms-flexbox;
+  display: flex;
+  -webkit-box-align: center;
+      -ms-flex-align: center;
+          align-items: center;
+  height: 100vh;
+}
+p {
+  font-family: Inconsolata, Source Code Pro, Consolas, monospace;
+  margin-left: calc(50vw - 6em);
+  font-size: 24px;
+  font-weight: bold;
+}</style>
+</head>
+<body>
+
+
+<script>
+"use strict";
+var prefix = '';
+var skills = [
+    '第一句话',
+    '第二句',
+    '长长长长长长长长长长长长长长长长一些的话',
+    '短',
+
+].map(function (s) { return s + "."; });
+var delay = 2;
+var step = 1;
+var tail = 5;
+var timeout = 75;
+var p = document.createElement('p');
+document.body.appendChild(p);
+var colors = [
+    "#000000",
+    "#000000",
+    "#000000",
+    "#000000",
+    "#000000",
+    "#000000",
+    "#000000",
+    "#000000",
+    "#000000",
+    "#000000",
+    "#000000",
+    "#000000",
+    "#000000",
+    "#000000",
+    "#000000",
+    "#000000",
+    "#000000",
+    "#000000",
+    "#000000",
+    "#000000",
+];
+function getRandomColor() {
+    return colors[Math.floor(Math.random() * colors.length)];
+}
+function getRandomChar() {
+    return String.fromCharCode(Math.random() * (127 - 33) + 33);
+}
+function getRandomColoredString(n) {
+    var fragment = document.createDocumentFragment();
+    for (var i = 0; i < n; i++) {
+        var char = document.createElement('span');
+        char.textContent = getRandomChar();
+        char.style.color = getRandomColor();
+        fragment.appendChild(char);
+    }
+    return fragment;
+}
+/** Global State */
+var $ = {
+    text: '',
+    prefixP: -tail,
+    skillI: 0,
+    skillP: 0,
+    direction: 'forward',
+    delay: delay,
+    step: step
+};
+function render() {
+    var skill = skills[$.skillI];
+    if ($.step) {
+        $.step--;
+    }
+    else {
+        $.step = step;
+        if ($.prefixP < prefix.length) {
+            if ($.prefixP >= 0) {
+                $.text += prefix[$.prefixP];
+            }
+            $.prefixP++;
+        }
+        else {
+            if ($.direction === 'forward') {
+                if ($.skillP < skill.length) {
+                    $.text += skill[$.skillP];
+                    $.skillP++;
+                }
+                else {
+                    if ($.delay) {
+                        $.delay--;
+                    }
+                    else {
+                        $.direction = 'backward';
+                        $.delay = delay;
+                    }
+                }
+            }
+            else {
+                if ($.skillP > 0) {
+                    $.text = $.text.slice(0, -1);
+                    $.skillP--;
+                }
+                else {
+                    $.skillI = ($.skillI + 1) % skills.length;
+                    $.direction = 'forward';
+                }
+            }
+        }
+    }
+    p.textContent = $.text;
+    p.appendChild(getRandomColoredString($.prefixP < prefix.length ?
+        Math.min(tail, tail + $.prefixP) :
+        Math.min(tail, skill.length - $.skillP)));
+    setTimeout(render, timeout);
+}
+setTimeout(render, 500);</script>
+
+</body>
+</html>

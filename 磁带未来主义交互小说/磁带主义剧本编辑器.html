@@ -1,0 +1,674 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TAPE_EDIT v2.2 // 完整功能版</title>
+    <link href="https://fonts.googleapis.com/css2?family=VT323&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-color: #1a1a1a;
+            --node-bg: #2a2a2a;
+            --text-color: #ffb000;
+            --line-color: #666;
+            --accent: #ffb000;
+            --dim: #885e00;
+        }
+
+        body {
+            margin: 0;
+            overflow: hidden;
+            background-color: var(--bg-color);
+            background-image: 
+                linear-gradient(rgba(255, 176, 0, 0.05) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(255, 176, 0, 0.05) 1px, transparent 1px);
+            background-size: 20px 20px;
+            font-family: 'Segoe UI', sans-serif;
+            color: #ddd;
+        }
+
+        /* --- 工具栏 --- */
+        #toolbar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 50px;
+            background: #000;
+            border-bottom: 1px solid var(--accent);
+            display: flex;
+            align-items: center;
+            padding: 0 20px;
+            z-index: 1000;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.5);
+        }
+
+        .title {
+            font-family: 'VT323', monospace;
+            font-size: 24px;
+            color: var(--accent);
+            margin-right: 30px;
+        }
+
+        button {
+            background: #333;
+            border: 1px solid #555;
+            color: #fff;
+            padding: 5px 15px;
+            margin-right: 10px;
+            cursor: pointer;
+            font-family: 'VT323', monospace;
+            font-size: 16px;
+            transition: 0.2s;
+        }
+
+        button:hover {
+            background: var(--accent);
+            color: #000;
+        }
+
+        button.primary {
+            border-color: var(--accent);
+            color: var(--accent);
+        }
+
+        /* --- 工作区 --- */
+        #workspace {
+            position: absolute;
+            top: 50px;
+            left: 0;
+            width: 100%;
+            height: calc(100% - 50px);
+            transform-origin: 0 0;
+            overflow: auto;
+        }
+
+        #connections {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 5000px; 
+            height: 5000px;
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        path {
+            fill: none;
+            stroke: var(--line-color);
+            stroke-width: 2px;
+            stroke-dasharray: 5;
+            animation: dash 30s linear infinite;
+        }
+        @keyframes dash { to { stroke-dashoffset: -1000; } }
+
+        /* --- 节点样式 --- */
+        .node {
+            position: absolute;
+            width: 320px;
+            background: var(--node-bg);
+            border: 1px solid #444;
+            border-radius: 4px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.4);
+            z-index: 10;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .node.selected {
+            border: 1px solid var(--accent);
+            box-shadow: 0 0 10px var(--accent);
+        }
+
+        .node-header {
+            background: #111;
+            padding: 8px 10px;
+            cursor: move;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid #444;
+        }
+
+        .node-id-input {
+            background: transparent;
+            border: none;
+            color: var(--accent);
+            font-family: 'VT323', monospace;
+            font-size: 18px;
+            width: 200px;
+        }
+        .node-id-input:focus { outline: none; background: #222; }
+
+        .node-tools button {
+            padding: 2px 6px;
+            margin: 0;
+            font-size: 12px;
+            background: #400;
+            border-color: #800;
+        }
+
+        .node-body { padding: 10px; }
+
+        /* --- 图片输入区域 --- */
+        .img-control-row {
+            display: flex;
+            align-items: center;
+            margin-bottom: 5px;
+            gap: 5px;
+        }
+        .img-label {
+            font-family: 'VT323', monospace;
+            color: #888;
+            font-size: 14px;
+            width: 40px;
+        }
+        .img-input {
+            flex-grow: 1;
+            background: #222;
+            border: 1px solid #444;
+            color: #aaa;
+            font-family: monospace;
+            font-size: 12px;
+            padding: 3px;
+        }
+        /* 文件夹图标按钮样式 */
+        .img-btn-select {
+            padding: 2px 8px;
+            margin: 0;
+            font-size: 14px;
+            background: #333;
+            border: 1px solid #555;
+            color: #fff;
+            cursor: pointer;
+        }
+        .img-btn-select:hover {
+            background: var(--accent);
+            color: #000;
+        }
+
+        .img-preview {
+            width: 100%;
+            height: 80px; /* 固定高度预览 */
+            background: #000;
+            border: 1px dashed #444;
+            margin-bottom: 10px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow: hidden;
+            color: #444;
+            font-size: 12px;
+        }
+        .img-preview img {
+            width: 100%;
+            height: 100%;
+            object-fit: fill; /* 模拟游戏中的拉伸效果 */
+            filter: grayscale(100%) sepia(50%); /* 编辑器里稍微给点复古感 */
+        }
+        .img-preview.has-img {
+            border: 1px solid var(--dim);
+        }
+
+        /* --- 文本区域 --- */
+        textarea {
+            width: 100%;
+            height: 100px;
+            background: #222;
+            border: 1px solid #444;
+            color: #ddd;
+            resize: vertical;
+            font-family: 'VT323', monospace;
+            font-size: 14px;
+            padding: 5px;
+            box-sizing: border-box;
+        }
+
+        .helper-bar {
+            display: flex;
+            gap: 5px;
+            margin-bottom: 5px;
+        }
+        .helper-bar button {
+            padding: 2px 5px;
+            font-size: 12px;
+            background: #333;
+            border: 1px solid #555;
+            color: #aaa;
+        }
+
+        /* --- 选项区域 --- */
+        .options-list { margin-top: 10px; }
+        .option-item {
+            background: #222;
+            padding: 5px;
+            margin-bottom: 5px;
+            border: 1px solid #444;
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+        .option-row { display: flex; gap: 5px; }
+        .option-text {
+            flex-grow: 1;
+            background: #111;
+            border: 1px solid #333;
+            color: #fff;
+            padding: 2px 5px;
+        }
+        .option-target {
+            width: 100px;
+            background: #111;
+            border: 1px solid #333;
+            color: var(--accent);
+        }
+        .option-del {
+            background: #400;
+            color: #fff;
+            border: none;
+            width: 20px;
+            cursor: pointer;
+        }
+        .add-option-btn {
+            width: 100%;
+            background: #333;
+            font-size: 12px;
+            padding: 4px;
+        }
+
+        /* --- 右键菜单 --- */
+        #context-menu {
+            position: fixed;
+            background: #222;
+            border: 1px solid var(--accent);
+            display: none;
+            z-index: 2000;
+            flex-direction: column;
+        }
+        #context-menu button {
+            margin: 0;
+            border: none;
+            text-align: left;
+            padding: 8px 15px;
+            width: 150px;
+        }
+        #context-menu button:hover { background: var(--accent); }
+        #file-input { display: none; }
+    </style>
+</head>
+<body>
+
+    <div id="toolbar">
+        <div class="title">TAPE_EDIT v2.2</div>
+        <button onclick="createNewNode()" class="primary">+ 新建节点 (Start)</button>
+        <div style="flex-grow: 1"></div>
+        <button onclick="document.getElementById('file-input').click()">导入 JSON</button>
+        <button onclick="exportJSON()" class="primary">导出 JSON</button>
+    </div>
+
+    <div id="workspace">
+        <svg id="connections"></svg>
+        <div id="nodes-container"></div>
+    </div>
+
+    <input type="file" id="file-input" accept=".json">
+
+    <div id="context-menu">
+        <button id="ctx-add-node">在此处新建节点</button>
+    </div>
+
+    <script>
+        let nodesData = {};
+        const container = document.getElementById('nodes-container');
+        const svg = document.getElementById('connections');
+        const workspace = document.getElementById('workspace');
+        
+        let isDragging = false;
+        let dragTarget = null;
+        let dragOffsetX = 0;
+        let dragOffsetY = 0;
+        let contextMenuPos = {x:0, y:0};
+
+        function init() {
+            if (Object.keys(nodesData).length === 0) {
+                createNode('start', 100, 100);
+            }
+            drawConnections();
+        }
+
+        // --- 核心逻辑 ---
+
+        function createNode(id = null, x = 100, y = 100, content = "") {
+            const finalId = id || 'node_' + Date.now();
+            
+            const nodeData = {
+                id: finalId,
+                x: x,
+                y: y,
+                image: "", // 新增图片字段
+                text: content || "在此输入剧情文本...",
+                options: []
+            };
+
+            if (nodesData[finalId]) {
+                nodesData[finalId].x = x;
+                nodesData[finalId].y = y;
+                if (content) nodesData[finalId].text = content; 
+            } else {
+                nodesData[finalId] = nodeData;
+            }
+
+            renderNode(finalId);
+            return finalId;
+        }
+
+        function deleteNode(id) {
+            if(confirm(`确定要删除节点 [${id}] 吗？`)) {
+                delete nodesData[id];
+                const el = document.getElementById(id);
+                if(el) el.remove();
+                drawConnections();
+            }
+        }
+
+        // --- 渲染 ---
+
+        function renderNode(id) {
+            const data = nodesData[id];
+            const existing = document.getElementById(id);
+            if(existing) existing.remove();
+
+            const el = document.createElement('div');
+            el.className = 'node';
+            el.id = id;
+            el.style.left = data.x + 'px';
+            el.style.top = data.y + 'px';
+
+            // HTML 构建
+            el.innerHTML = `
+                <div class="node-header" onmousedown="startDrag(event, '${id}')">
+                    <input class="node-id-input" value="${id}" onchange="updateNodeId('${id}', this.value)">
+                    <div class="node-tools">
+                        <button onclick="deleteNode('${id}')">X</button>
+                    </div>
+                </div>
+                <div class="node-body">
+                    
+                    <div class="img-control-row">
+                        <span class="img-label">IMG:</span>
+                        <input class="img-input" id="img-input-${id}" 
+                               placeholder="images/filename.jpg" 
+                               value="${data.image || ''}" 
+                               oninput="updateNodeImage('${id}', this.value)">
+                        
+                        <button class="img-btn-select" title="选择本地图片" onclick="triggerFileSelect('${id}')">📂</button>
+                        <input type="file" id="img-file-${id}" style="display:none" accept="image/*" onchange="handleFileSelect('${id}', this)">
+                    </div>
+
+                    <div class="img-preview ${data.image ? 'has-img' : ''}" id="preview-${id}">
+                        ${data.image ? `<img src="${data.image}" onerror="this.parentNode.innerHTML='NOT FOUND'">` : 'NO IMAGE'}
+                    </div>
+
+                    <div class="helper-bar">
+                        <button onclick="insertTag('${id}', '\\\\. ')">Wait</button>
+                        <button onclick="insertTag('${id}', '\\\\C[red]{}', 8)">Color</button>
+                        <button onclick="insertTag('${id}', '\\\\_{}', 3)">Line</button>
+                        <!-- 这里是新增的删除线按钮 -->
+                        <button onclick="insertTag('${id}', '\\\\-{}', 3)">Strike</button>
+                    </div>
+                    <textarea id="text-${id}" oninput="updateNodeText('${id}')">${data.text}</textarea>
+                    
+                    <div class="options-list" id="opts-${id}"></div>
+                    <button class="add-option-btn" onclick="addOption('${id}')">+ 添加选项</button>
+                </div>
+            `;
+
+            container.appendChild(el);
+            renderOptions(id);
+        }
+
+        function renderOptions(nodeId) {
+            const listContainer = document.getElementById(`opts-${nodeId}`);
+            listContainer.innerHTML = '';
+            
+            nodesData[nodeId].options.forEach((opt, index) => {
+                const optDiv = document.createElement('div');
+                optDiv.className = 'option-item';
+                
+                let selectHtml = `<select class="option-target" onchange="updateOptionTarget('${nodeId}', ${index}, this.value)">
+                    <option value="">(结束)</option>`;
+                
+                Object.keys(nodesData).forEach(key => {
+                    const selected = opt.nextNode === key ? 'selected' : '';
+                    selectHtml += `<option value="${key}" ${selected}>${key}</option>`;
+                });
+                selectHtml += `</select>`;
+
+                optDiv.innerHTML = `
+                    <div class="option-row">
+                        <input class="option-text" value="${opt.text}" placeholder="按钮文字" oninput="updateOptionText('${nodeId}', ${index}, this.value)">
+                        <button class="option-del" onclick="deleteOption('${nodeId}', ${index})">×</button>
+                    </div>
+                    <div class="option-row">
+                        <span style="font-size:12px;color:#666;line-height:20px;">跳转:</span>
+                        ${selectHtml}
+                    </div>
+                `;
+                listContainer.appendChild(optDiv);
+            });
+        }
+
+        // --- 图像选择逻辑 ---
+        function triggerFileSelect(id) {
+            document.getElementById(`img-file-${id}`).click();
+        }
+
+        function handleFileSelect(id, inputElement) {
+            const file = inputElement.files[0];
+            if (file) {
+                const filename = file.name;
+                const relativePath = "images/" + filename;
+                const textInput = document.getElementById(`img-input-${id}`);
+                textInput.value = relativePath;
+                updateNodeImage(id, relativePath);
+            }
+            inputElement.value = '';
+        }
+
+        // --- 数据更新 ---
+
+        function updateNodeId(oldId, newId) {
+            if (oldId === newId) return;
+            if (nodesData[newId]) {
+                alert('ID 已存在！');
+                renderNode(oldId);
+                return;
+            }
+            nodesData[newId] = nodesData[oldId];
+            nodesData[newId].id = newId;
+            delete nodesData[oldId];
+            Object.values(nodesData).forEach(node => {
+                node.options.forEach(opt => {
+                    if (opt.nextNode === oldId) opt.nextNode = newId;
+                });
+            });
+            refreshAll();
+        }
+
+        function updateNodeText(id) {
+            const val = document.getElementById(`text-${id}`).value;
+            nodesData[id].text = val;
+        }
+
+        function updateNodeImage(id, val) {
+            nodesData[id].image = val;
+            const previewEl = document.getElementById(`preview-${id}`);
+            if (val && val.trim() !== "") {
+                previewEl.className = "img-preview has-img";
+                previewEl.innerHTML = `<img src="${val}" onerror="this.parentNode.innerHTML='NOT FOUND'">`;
+            } else {
+                previewEl.className = "img-preview";
+                previewEl.innerHTML = "NO IMAGE";
+            }
+        }
+
+        function addOption(id) {
+            nodesData[id].options.push({ text: "选项", nextNode: "" });
+            renderOptions(id);
+        }
+
+        function deleteOption(id, index) {
+            nodesData[id].options.splice(index, 1);
+            renderOptions(id);
+            drawConnections();
+        }
+
+        function updateOptionText(id, index, val) {
+            nodesData[id].options[index].text = val;
+        }
+
+        function updateOptionTarget(id, index, targetId) {
+            nodesData[id].options[index].nextNode = targetId;
+            drawConnections();
+        }
+
+        function insertTag(id, tag, cursorPosOffset = 0) {
+            const textarea = document.getElementById(`text-${id}`);
+            const start = textarea.selectionStart;
+            const end = textarea.selectionEnd;
+            const text = textarea.value;
+            textarea.value = text.substring(0, start) + tag + text.substring(end);
+            nodesData[id].text = textarea.value;
+            textarea.focus();
+            const newPos = start + (cursorPosOffset || tag.length);
+            textarea.setSelectionRange(newPos, newPos);
+        }
+
+        function refreshAll() {
+            container.innerHTML = '';
+            Object.keys(nodesData).forEach(key => renderNode(key));
+            drawConnections();
+        }
+
+        // --- 拖拽与绘图 ---
+        function startDrag(e, id) {
+            isDragging = true;
+            dragTarget = id;
+            const node = document.getElementById(id);
+            const rect = node.getBoundingClientRect();
+            dragOffsetX = e.clientX - rect.left;
+            dragOffsetY = e.clientY - rect.top;
+            document.querySelectorAll('.node').forEach(n => n.classList.remove('selected'));
+            node.classList.add('selected');
+        }
+
+        document.addEventListener('mousemove', (e) => {
+            if (!isDragging || !dragTarget) return;
+            let newX = e.clientX - dragOffsetX;
+            let newY = e.clientY - dragOffsetY - 50;
+            newX = Math.round(newX / 20) * 20;
+            newY = Math.round(newY / 20) * 20;
+            const node = document.getElementById(dragTarget);
+            node.style.left = newX + 'px';
+            node.style.top = newY + 'px';
+            nodesData[dragTarget].x = newX;
+            nodesData[dragTarget].y = newY;
+            drawConnections();
+        });
+
+        document.addEventListener('mouseup', () => { isDragging = false; dragTarget = null; });
+
+        function drawConnections() {
+            let paths = "";
+            Object.values(nodesData).forEach(node => {
+                if (!document.getElementById(node.id)) return;
+                node.options.forEach((opt, index) => {
+                    if (opt.nextNode && nodesData[opt.nextNode]) {
+                        const startX = nodesData[node.id].x + 320; 
+                        const startY = nodesData[node.id].y + 260 + (index * 60); 
+                        
+                        const endX = nodesData[opt.nextNode].x;
+                        const endY = nodesData[opt.nextNode].y + 20;
+
+                        const cp1X = startX + 80;
+                        const cp1Y = startY;
+                        const cp2X = endX - 80;
+                        const cp2Y = endY;
+
+                        const color = `hsl(${(opt.nextNode.length * 20) % 360}, 70%, 50%)`;
+                        paths += `<path d="M ${startX} ${startY} C ${cp1X} ${cp1Y}, ${cp2X} ${cp2Y}, ${endX} ${endY}" stroke="${color}" />`;
+                    }
+                });
+            });
+            svg.innerHTML = paths;
+        }
+
+        // --- 系统功能 ---
+        workspace.addEventListener('contextmenu', (e) => {
+            e.preventDefault();
+            if (e.target === workspace || e.target === svg) {
+                const menu = document.getElementById('context-menu');
+                menu.style.display = 'flex';
+                menu.style.left = e.clientX + 'px';
+                menu.style.top = e.clientY + 'px';
+                contextMenuPos = { x: e.clientX, y: e.clientY - 50 };
+            }
+        });
+
+        document.getElementById('ctx-add-node').addEventListener('click', () => {
+            createNode(null, contextMenuPos.x, contextMenuPos.y);
+            document.getElementById('context-menu').style.display = 'none';
+        });
+
+        workspace.addEventListener('click', () => {
+             document.getElementById('context-menu').style.display = 'none';
+        });
+
+        function createNewNode() { createNode(null, 100, 100); }
+
+        function exportJSON() {
+            const dataStr = JSON.stringify(nodesData, null, 4);
+            const blob = new Blob([dataStr], { type: "application/json" });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = "story.json";
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+
+        document.getElementById('file-input').addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = (ev) => {
+                try {
+                    const importedData = JSON.parse(ev.target.result);
+                    nodesData = {}; 
+                    let autoX = 50, autoY = 50;
+                    
+                    Object.keys(importedData).forEach(key => {
+                        const node = importedData[key];
+                        nodesData[key] = {
+                            id: key,
+                            text: node.text || "",
+                            image: node.image || "", 
+                            options: node.options || [],
+                            x: node.x || (node._editor ? node._editor.x : autoX),
+                            y: node.y || (node._editor ? node._editor.y : autoY)
+                        };
+                        if (!node.x) {
+                            autoX += 360;
+                            if (autoX > 1000) { autoX = 50; autoY += 500; }
+                        }
+                    });
+                    refreshAll();
+                } catch (err) { alert("导入失败：" + err); }
+            };
+            reader.readAsText(file);
+        });
+
+        init();
+    </script>
+</body>
+</html>

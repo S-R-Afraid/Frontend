@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>System Audio Visualizer</title>
+    <style>
+        /* --- 保持赛博朋克风格 --- */
+        * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; }
+        
+        body {
+            font-family: 'Inter', sans-serif;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background: radial-gradient(circle at center, #000000 0%, #1a0b2e 100%);
+            color: #fff;
+            overflow: hidden;
+        }
+
+        .glass-card {
+            background: rgba(255, 255, 255, 0.02);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 30px;
+            padding: 40px;
+            width: 90%;
+            max-width: 700px;
+            box-shadow: 0 0 80px rgba(138, 43, 226, 0.2);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+        }
+
+        h1 {
+            font-weight: 700;
+            letter-spacing: 2px;
+            margin-bottom: 10px;
+            background: linear-gradient(to right, #ff00cc, #333399);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            text-transform: uppercase;
+        }
+        
+        p.subtitle {
+            color: #888;
+            font-size: 0.9rem;
+            margin-bottom: 30px;
+        }
+
+        /* 捕获按钮 */
+        .capture-btn {
+            background: linear-gradient(45deg, #ff00cc, #333399);
+            border: none;
+            padding: 15px 40px;
+            border-radius: 50px;
+            color: white;
+            font-size: 1rem;
+            font-weight: bold;
+            cursor: pointer;
+            box-shadow: 0 0 20px rgba(255, 0, 204, 0.4);
+            transition: all 0.3s;
+            margin-bottom: 20px;
+        }
+
+        .capture-btn:hover {
+            transform: scale(1.05);
+            box-shadow: 0 0 40px rgba(255, 0, 204, 0.6);
+        }
+        
+        .capture-btn:disabled {
+            background: #444;
+            box-shadow: none;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        /* Canvas 容器 */
+        .canvas-container {
+            width: 100%;
+            height: 250px;
+            background: #000;
+            border-radius: 16px;
+            border: 1px solid rgba(255,255,255,0.1);
+            box-shadow: inset 0 0 30px rgba(0,0,0,0.9);
+            overflow: hidden;
+            position: relative;
+        }
+        
+        /* 网格背景 */
+        .canvas-container::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: 
+                linear-gradient(rgba(255,0,204,0.1) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(255,0,204,0.1) 1px, transparent 1px);
+            background-size: 40px 40px;
+            pointer-events: none;
+        }
+
+        canvas { width: 100%; height: 100%; }
+
+        .status-text {
+            margin-top: 20px;
+            color: #aaa;
+            font-size: 0.85rem;
+        }
+        
+        .warn { color: #ff9900; }
+    </style>
+</head>
+<body>
+
+    <div class="glass-card">
+        <h1>System Audio Visualizer</h1>
+        <p class="subtitle">可视化电脑上的任何声音 (YouTube, Spotify 等)</p>
+        
+        <div class="canvas-container">
+            <canvas id="waveformCanvas"></canvas>
+        </div>
+
+        <div class="status-text" id="statusText">准备就绪</div>
+        <div class="status-text" id="statusText1">请选择共享整个屏幕，并勾选【分享系统音频】。</div>
+
+        <br>
+
+        <button class="capture-btn" id="startBtn">开始捕获系统音频</button>
+    </div>
+
+    <script>
+        const startBtn = document.getElementById('startBtn');
+        const canvas = document.getElementById('waveformCanvas');
+        const ctx = canvas.getContext('2d');
+        const statusText = document.getElementById('statusText');
+
+        let audioContext;
+        let analyser;
+        let source;
+        let animationId;
+        let stream; // 保存媒体流以便停止
+
+        // 调整画布大小
+        function resizeCanvas() {
+            canvas.width = canvas.parentElement.offsetWidth;
+            canvas.height = canvas.parentElement.offsetHeight;
+        }
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+
+        startBtn.addEventListener('click', async () => {
+            try {
+                // 1. 请求屏幕共享，并强制要求音频
+                stream = await navigator.mediaDevices.getDisplayMedia({
+                    video: true, // 必须请求视频才能拿到系统音频（这是浏览器的限制）
+                    audio: {
+                        echoCancellation: false, // 关闭回声消除以获得更原始的音乐
+                        noiseSuppression: false,
+                        autoGainControl: false
+                    }
+                });
+
+                // 2. 检查用户是否真的分享了音频
+                const audioTracks = stream.getAudioTracks();
+                if (audioTracks.length === 0) {
+                    statusText.innerHTML = "<span class='warn'>❌ 未检测到音频！请刷新页面重试，并务必勾选【分享系统音频】。</span>";
+                    // 停止所有轨道关闭共享图标
+                    stream.getTracks().forEach(track => track.stop());
+                    return;
+                }
+
+                statusText.textContent = "正在监听系统音频... (请在其他软件播放音乐)";
+                startBtn.disabled = true;
+                startBtn.textContent = "正在运行";
+
+                // 3. 初始化 AudioContext
+                if (!audioContext) {
+                    audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                } else if (audioContext.state === 'suspended') {
+                    audioContext.resume();
+                }
+
+                analyser = audioContext.createAnalyser();
+                analyser.fftSize = 2048;
+
+                // 4. 创建媒体流源
+                source = audioContext.createMediaStreamSource(stream);
+                source.connect(analyser);
+                
+                // ⚠️ 重要：不要连接到 destination (source.connect(audioContext.destination))
+                // 因为声音本身就是系统发出的，如果这里再播放一次，会造成严重的重叠或回声。
+
+                // 5. 监听流结束事件（比如用户点击了浏览器自带的“停止共享”）
+                stream.getVideoTracks()[0].onended = () => {
+                    statusText.textContent = "捕获已停止";
+                    startBtn.disabled = false;
+                    startBtn.textContent = "开始捕获系统音频";
+                    cancelAnimationFrame(animationId);
+                    ctx.clearRect(0, 0, canvas.width, canvas.height);
+                };
+
+                // 6. 开始绘图
+                drawWaveform();
+
+            } catch (err) {
+                console.error("Error: " + err);
+                statusText.textContent = "取消或发生错误: " + err.message;
+            }
+        });
+
+        function drawWaveform() {
+            animationId = requestAnimationFrame(drawWaveform);
+
+            const bufferLength = analyser.fftSize;
+            const dataArray = new Uint8Array(bufferLength);
+            analyser.getByteTimeDomainData(dataArray);
+
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // 紫色系渐变
+            const gradient = ctx.createLinearGradient(0, 0, canvas.width, 0);
+            gradient.addColorStop(0, '#ff00cc');
+            gradient.addColorStop(1, '#333399');
+
+            ctx.lineWidth = 2.5;
+            ctx.strokeStyle = gradient;
+            ctx.shadowBlur = 15;
+            ctx.shadowColor = "#ff00cc";
+
+            ctx.beginPath();
+            const sliceWidth = canvas.width * 1.0 / bufferLength;
+            let x = 0;
+
+            for(let i = 0; i < bufferLength; i++) {
+                const v = dataArray[i] / 128.0;
+                const y = v * canvas.height / 2;
+
+                if(i === 0) ctx.moveTo(x, y);
+                else ctx.lineTo(x, y);
+
+                x += sliceWidth;
+            }
+
+            ctx.lineTo(canvas.width, canvas.height / 2);
+            ctx.stroke();
+            ctx.shadowBlur = 0;
+        }
+    </script>
+</body>
+</html>

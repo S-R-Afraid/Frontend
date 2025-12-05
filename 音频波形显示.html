@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>音频波形可视化</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #1a1a1a;
+            color: #fff;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            margin: 0;
+        }
+
+        h1 {
+            font-weight: 300;
+            margin-bottom: 20px;
+        }
+
+        .container {
+            background: #2d2d2d;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+            text-align: center;
+            width: 80%;
+            max-width: 800px;
+        }
+
+        /* 文件上传按钮样式 */
+        input[type="file"] {
+            margin-bottom: 20px;
+            padding: 10px;
+            border: 1px solid #444;
+            border-radius: 5px;
+            background: #333;
+            color: #ddd;
+            cursor: pointer;
+        }
+
+        audio {
+            width: 100%;
+            margin-bottom: 20px;
+            outline: none;
+        }
+
+        /* 画布样式 */
+        canvas {
+            width: 100%;
+            height: 300px;
+            background-color: #000;
+            border-radius: 4px;
+            border: 1px solid #444;
+            box-shadow: inset 0 0 20px rgba(0,0,0,0.8);
+        }
+
+        .status {
+            margin-top: 10px;
+            color: #888;
+            font-size: 0.9em;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h1>🎵 音频波形可视化</h1>
+        
+        <input type="file" id="fileInput" accept="audio/*" />
+        
+        <audio id="audioPlayer" controls></audio>
+        
+        <canvas id="waveformCanvas"></canvas>
+        
+        <div class="status" id="statusText">请选择一个音频文件开始播放</div>
+    </div>
+
+    <script>
+        // 获取DOM元素
+        const fileInput = document.getElementById('fileInput');
+        const audioPlayer = document.getElementById('audioPlayer');
+        const canvas = document.getElementById('waveformCanvas');
+        const ctx = canvas.getContext('2d');
+        const statusText = document.getElementById('statusText');
+
+        // Web Audio API 变量
+        let audioContext;
+        let analyser;
+        let source;
+        let isInitialized = false;
+
+        // 设置画布分辨率（防止模糊）
+        function resizeCanvas() {
+            canvas.width = canvas.offsetWidth;
+            canvas.height = canvas.offsetHeight;
+        }
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+
+        // 初始化 AudioContext
+        // 浏览器的安全策略要求 AudioContext 必须在用户交互（如点击）后才能启动
+        function initAudioContext() {
+            if (isInitialized) return;
+
+            const AudioContext = window.AudioContext || window.webkitAudioContext;
+            audioContext = new AudioContext();
+
+            // 创建分析器节点
+            analyser = audioContext.createAnalyser();
+            analyser.fftSize = 2048; // 设置FFT大小，决定了波形的细节程度 (必须是2的幂)
+
+            // 连接：MediaElement -> Analyser -> Destination (扬声器)
+            // 注意：createMediaElementSource 只能被调用一次，所以放在这里
+            source = audioContext.createMediaElementSource(audioPlayer);
+            source.connect(analyser);
+            analyser.connect(audioContext.destination);
+
+            isInitialized = true;
+        }
+
+        // 处理文件上传
+        fileInput.addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            // 创建文件的 blob URL 并赋值给播放器
+            const fileURL = URL.createObjectURL(file);
+            audioPlayer.src = fileURL;
+            statusText.textContent = `当前播放: ${file.name}`;
+            
+            // 确保 AudioContext 已初始化
+            initAudioContext();
+            
+            // 某些浏览器需要显式 resume
+            if (audioContext.state === 'suspended') {
+                audioContext.resume();
+            }
+
+            audioPlayer.play().catch(err => {
+                console.log("自动播放被阻止，请手动点击播放", err);
+            });
+
+            // 开始绘制循环
+            drawWaveform();
+        });
+
+        // 绘制波形函数
+        function drawWaveform() {
+            // 使用 requestAnimationFrame 保持循环
+            requestAnimationFrame(drawWaveform);
+
+            if (!isInitialized) return;
+
+            // 获取时域数据
+            const bufferLength = analyser.fftSize;
+            const dataArray = new Uint8Array(bufferLength);
+            analyser.getByteTimeDomainData(dataArray);
+
+            // 清空画布
+            ctx.fillStyle = 'rgb(0, 0, 0)'; // 背景色
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // 设置波形线条样式
+            ctx.lineWidth = 2;
+            ctx.strokeStyle = '#00ffcc'; // 荧光绿线条
+            ctx.beginPath();
+
+            const sliceWidth = canvas.width * 1.0 / bufferLength;
+            let x = 0;
+
+            // 遍历数据绘制线条
+            for(let i = 0; i < bufferLength; i++) {
+                const v = dataArray[i] / 128.0; // 将 0-255 归一化到 0-2 之间 (1是中心)
+                const y = v * canvas.height / 2;
+
+                if(i === 0) {
+                    ctx.moveTo(x, y);
+                } else {
+                    ctx.lineTo(x, y);
+                }
+
+                x += sliceWidth;
+            }
+
+            ctx.lineTo(canvas.width, canvas.height / 2);
+            ctx.stroke();
+        }
+
+        // 监听播放器事件以处理 AudioContext 状态
+        audioPlayer.addEventListener('play', () => {
+            if (audioContext && audioContext.state === 'suspended') {
+                audioContext.resume();
+            }
+        });
+    </script>
+</body>
+</html>

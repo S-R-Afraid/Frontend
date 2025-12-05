@@ -1,0 +1,730 @@
+<!DOCTYPE html>
+<html lang="zh">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Dungeon Gen: Logic Fix</title>
+    <style>
+        body {
+            background-color: #121212;
+            color: #e0e0e0;
+            font-family: 'Consolas', monospace;
+            display: flex;
+            height: 100vh;
+            margin: 0;
+            overflow: hidden;
+        }
+
+        #controls {
+            width: 340px;
+            background: #1e1e1e;
+            padding: 20px;
+            box-shadow: 2px 0 10px rgba(0, 0, 0, 0.5);
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            overflow-y: auto;
+            z-index: 10;
+            flex-shrink: 0;
+        }
+
+        h2 {
+            margin: 0 0 10px 0;
+            font-size: 16px;
+            color: #bb86fc;
+            border-bottom: 1px solid #333;
+            padding-bottom: 10px;
+        }
+
+        .setting {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            padding: 5px 0;
+        }
+
+        label {
+            font-size: 12px;
+            color: #aaa;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        span.val {
+            color: #03dac6;
+            font-weight: bold;
+        }
+
+        input[type="range"] {
+            width: 100%;
+            cursor: pointer;
+            accent-color: #bb86fc;
+        }
+
+        .slider-corridor {
+            accent-color: #03dac6;
+        }
+
+        .slider-room {
+            accent-color: #cf6679;
+        }
+
+        button {
+            margin-top: 10px;
+            padding: 12px;
+            background: #3700b3;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 14px;
+            transition: 0.2s;
+        }
+
+        button:hover {
+            background: #6200ea;
+        }
+
+        #btn-instant {
+            background: #03dac6;
+            color: #000;
+        }
+
+        #btn-instant:hover {
+            background: #00b3a6;
+        }
+
+        #main {
+            flex-grow: 1;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            position: relative;
+            background-color: #000;
+            overflow: hidden;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+
+        canvas {
+            box-shadow: 0 0 30px rgba(0, 0, 0, 0.8);
+            image-rendering: pixelated;
+            transition: width 0.3s, height 0.3s;
+        }
+
+        #status {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: rgba(30, 30, 30, 0.9);
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 14px;
+            color: #fff;
+            pointer-events: none;
+            border: 1px solid #444;
+            z-index: 20;
+        }
+
+        .legend {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 10px;
+            border-radius: 8px;
+            font-size: 12px;
+            color: #ccc;
+            line-height: 1.6;
+            z-index: 20;
+        }
+
+        .dot {
+            display: inline-block;
+            width: 10px;
+            height: 10px;
+            margin-right: 5px;
+        }
+
+        hr {
+            border: 0;
+            border-top: 1px solid #333;
+            width: 100%;
+            margin: 5px 0;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div id="controls">
+        <h2>地牢生成设置 (Fixed)</h2>
+
+        <div class="setting">
+            <label>地图宽度<span id="v-width" class="val">61</span></label>
+            <input type="range" id="width" min="21" max="251" step="2" value="61">
+        </div>
+
+        <div class="setting">
+            <label>地图高度<span id="v-height" class="val">41</span></label>
+            <input type="range" id="height" min="21" max="251" step="2" value="41">
+        </div>
+
+        <div style="font-size: 11px; color: #666; margin-top:-5px; text-align: right;">
+            自动缩放: <span id="current-scale" style="color: #bb86fc">12</span> px
+        </div>
+
+        <hr>
+
+        <div class="setting">
+            <label>动画延迟<span id="v-speed" class="val">5ms</span></label>
+            <input type="range" id="speed" min="0" max="100" value="5">
+        </div>
+
+        <div class="setting">
+            <label>房间尝试次数<span id="v-attempts" class="val">200</span></label>
+            <input type="range" id="attempts" min="10" max="1500" value="200" step="10">
+        </div>
+
+        <hr>
+
+        <div class="setting">
+            <label style="color:#03dac6">走廊回路概率<span id="v-corr-chance" class="val">20%</span></label>
+            <input type="range" id="corr-chance" class="slider-corridor" min="0" max="100" value="20">
+        </div>
+
+        <div class="setting">
+            <label style="color:#cf6679">房间回路概率<span id="v-room-chance" class="val">5%</span></label>
+            <input type="range" id="room-chance" class="slider-room" min="0" max="100" value="5">
+        </div>
+
+        <div class="setting">
+            <label>
+                <!-- 修正后的标签：明确表示这是功能的开关 -->
+                <input type="checkbox" id="removeDeadEnds" checked> 启用：移除死胡同功能
+            </label>
+            <div style="font-size:10px; color:#888;">*不勾选则保留所有死路</div>
+        </div>
+
+        <button id="btn-run">带动画生成 (Visualize)</button>
+        <button id="btn-instant">⚡ 一键直接生成 (Instant)</button>
+    </div>
+
+    <div id="main">
+        <canvas id="canvas"></canvas>
+    </div>
+
+    <div id="status">准备就绪</div>
+    <div class="legend">
+        <div><span class="dot" style="background:#F5F5DC"></span>已联通区域 (米白)</div>
+        <div><span class="dot" style="background:hsl(200,50%,30%)"></span>未联通区域 (随机暗色)</div>
+        <div><span class="dot" style="background:#cf6679"></span>房间门</div>
+        <div><span class="dot" style="background:#03dac6"></span>走廊捷径</div>
+    </div>
+
+    <script>
+        const TILE = { WALL: 0, FLOOR: 1, DOOR_ROOM: 2, DOOR_CORRIDOR: 3 };
+        const DIRS = [{ x: 0, y: -1 }, { x: 0, y: 1 }, { x: -1, y: 0 }, { x: 1, y: 0 }];
+        const BEIGE_COLOR = '#F5F5DC';
+
+        function getRandomColor(seed) {
+            const hue = (seed * 137.508) % 360;
+            return `hsl(${hue}, 60%, 35%)`;
+        }
+
+        class Dungeon {
+            constructor(canvas) {
+                this.canvas = canvas;
+                this.ctx = canvas.getContext('2d');
+                this.width = 61;
+                this.height = 41;
+                this.scale = 12;
+                this.runId = 0;
+                this.isInstantMode = false;
+                this.grid = [];
+                this.regions = [];
+                this.regionParents = [];
+                this.regionColors = [];
+                this.regionIsRoom = [];
+                this.roomDoorCounts = [];
+                this.maxRegionId = -1;
+
+                window.addEventListener('resize', () => {
+                    clearTimeout(this.resizeTimer);
+                    this.resizeTimer = setTimeout(() => {
+                        this.resize(this.width, this.height);
+                        this.drawFull(true);
+                    }, 100);
+                });
+            }
+
+            resize(w, h) {
+                this.width = w % 2 === 0 ? w + 1 : w;
+                this.height = h % 2 === 0 ? h + 1 : h;
+                const main = document.getElementById('main');
+                const containerW = main.clientWidth;
+                const containerH = main.clientHeight;
+                const padding = 40;
+                const scaleX = (containerW - padding) / this.width;
+                const scaleY = (containerH - padding) / this.height;
+                let bestScale = Math.min(scaleX, scaleY);
+                bestScale = Math.floor(bestScale);
+                if (bestScale < 2) bestScale = 2;
+                if (bestScale > 16) bestScale = 16;
+                this.scale = bestScale;
+                document.getElementById('current-scale').innerText = this.scale;
+                this.canvas.width = this.width * this.scale;
+                this.canvas.height = this.height * this.scale;
+            }
+
+            reset() {
+                this.grid = [];
+                this.regions = [];
+                this.regionParents = [];
+                this.regionColors = [];
+                this.regionIsRoom = [];
+                this.roomDoorCounts = [];
+                this.maxRegionId = -1;
+                for (let y = 0; y < this.height; y++) {
+                    this.grid[y] = Array(this.width).fill(TILE.WALL);
+                    this.regions[y] = Array(this.width).fill(-1);
+                }
+                this.ctx.fillStyle = '#000';
+                this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+            }
+
+            createRegion(isRoom) {
+                this.maxRegionId++;
+                const id = this.maxRegionId;
+                this.regionParents[id] = id;
+                if (id === 0) this.regionColors[id] = BEIGE_COLOR;
+                else this.regionColors[id] = getRandomColor(id);
+                this.regionIsRoom[id] = isRoom;
+                this.roomDoorCounts[id] = 0;
+                return id;
+            }
+
+            findSet(i) {
+                if (this.regionParents[i] === i) return i;
+                this.regionParents[i] = this.findSet(this.regionParents[i]);
+                return this.regionParents[i];
+            }
+
+            unionSets(i, j) {
+                const rootI = this.findSet(i);
+                const rootJ = this.findSet(j);
+                if (rootI !== rootJ) {
+                    const colorI = this.regionColors[rootI];
+                    const colorJ = this.regionColors[rootJ];
+                    if (colorI === BEIGE_COLOR) this.regionParents[rootJ] = rootI;
+                    else if (colorJ === BEIGE_COLOR) this.regionParents[rootI] = rootJ;
+                    else this.regionParents[rootJ] = rootI;
+                    return true;
+                }
+                return false;
+            }
+
+            getCellColor(regionId) {
+                if (regionId === -1) return '#000';
+                const root = this.findSet(regionId);
+                return this.regionColors[root];
+            }
+
+            isBeige(regionId) {
+                if (regionId === -1) return false;
+                const root = this.findSet(regionId);
+                return this.regionColors[root] === BEIGE_COLOR;
+            }
+
+            drawFull(force = false) {
+                if (this.isInstantMode && !force) return;
+                this.ctx.fillStyle = '#000';
+                this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+                for (let y = 0; y < this.height; y++) {
+                    for (let x = 0; x < this.width; x++) {
+                        this.drawCell(x, y, null, true);
+                    }
+                }
+            }
+
+            drawCell(x, y, overrideColor = null, ignoreMode = false) {
+                if (this.isInstantMode && !ignoreMode) return;
+
+                const tile = this.grid[y][x];
+                const rId = this.regions[y][x];
+                const px = x * this.scale;
+                const py = y * this.scale;
+
+                if (tile === TILE.WALL) {
+                    this.ctx.fillStyle = '#000';
+                    this.ctx.fillRect(px, py, this.scale, this.scale);
+                } else if (tile === TILE.DOOR_ROOM) {
+                    this.ctx.fillStyle = '#cf6679';
+                    this.ctx.fillRect(px, py, this.scale, this.scale);
+                    this.ctx.strokeStyle = '#000';
+                    this.ctx.lineWidth = 1;
+                    this.ctx.strokeRect(px, py, this.scale, this.scale);
+                } else if (tile === TILE.DOOR_CORRIDOR) {
+                    this.ctx.fillStyle = '#03dac6';
+                    this.ctx.fillRect(px, py, this.scale, this.scale);
+                } else {
+                    this.ctx.fillStyle = overrideColor || this.getCellColor(rId);
+                    this.ctx.fillRect(px, py, this.scale, this.scale);
+                }
+            }
+
+            async wait(ms) {
+                if (this.isInstantMode) return;
+                if (ms <= 0) await new Promise(r => requestAnimationFrame(r));
+                else await new Promise(r => setTimeout(r, ms));
+            }
+
+            checkInterrupt(id) {
+                if (this.runId !== id) throw 'STOP';
+            }
+
+            wouldFormArtifact(x, y) {
+                const isEmpty = (tx, ty) => {
+                    if (tx === x && ty === y) return true;
+                    if (tx < 0 || ty < 0 || tx >= this.width || ty >= this.height) return false;
+                    return this.grid[ty][tx] !== TILE.WALL;
+                };
+                if (isEmpty(x - 1, y - 1) && isEmpty(x, y - 1) && isEmpty(x - 1, y)) return true;
+                if (isEmpty(x + 1, y - 1) && isEmpty(x, y - 1) && isEmpty(x + 1, y)) return true;
+                if (isEmpty(x - 1, y + 1) && isEmpty(x, y + 1) && isEmpty(x - 1, y)) return true;
+                if (isEmpty(x + 1, y + 1) && isEmpty(x, y + 1) && isEmpty(x + 1, y)) return true;
+                return false;
+            }
+
+            async animateFloodFill(startX, startY, targetRoot, speed) {
+                if (this.isInstantMode) return;
+                let queue = [{ x: startX, y: startY }];
+                let visited = new Set();
+                visited.add(`${startX},${startY}`);
+                this.drawCell(startX, startY, BEIGE_COLOR);
+                while (queue.length > 0) {
+                    let nextQueue = [];
+                    for (let i = 0; i < queue.length; i++) {
+                        const curr = queue[i];
+                        for (let d of DIRS) {
+                            const nx = curr.x + d.x;
+                            const ny = curr.y + d.y;
+                            if (nx >= 0 && ny >= 0 && nx < this.width && ny < this.height) {
+                                const key = `${nx},${ny}`;
+                                if (!visited.has(key)) {
+                                    const tile = this.grid[ny][nx];
+                                    if (tile !== TILE.WALL) {
+                                        const rId = this.regions[ny][nx];
+                                        if (this.findSet(rId) === targetRoot) {
+                                            visited.add(key);
+                                            nextQueue.push({ x: nx, y: ny });
+                                            this.drawCell(nx, ny, BEIGE_COLOR);
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    queue = nextQueue;
+                    if (speed > 0) await this.wait(Math.max(5, speed / 2));
+                    else await this.wait(0);
+                }
+            }
+
+            async placeRooms(currentRunId, attempts) {
+                if (!this.isInstantMode) document.getElementById('status').innerText = "Step 1: 放置房间";
+                const speed = parseInt(document.getElementById('speed').value);
+                for (let i = 0; i < attempts; i++) {
+                    this.checkInterrupt(currentRunId);
+                    const size = (Math.floor(Math.random() * 3) + 1) * 2 + 1;
+                    const rectangularity = Math.floor(Math.random() * (1 + size / 2)) * 2;
+                    let w = size, h = size;
+                    if (Math.random() < 0.5) w += rectangularity; else h += rectangularity;
+                    const x = Math.floor(Math.random() * (this.width - w) / 2) * 2 + 1;
+                    const y = Math.floor(Math.random() * (this.height - h) / 2) * 2 + 1;
+                    if (x < 1 || y < 1 || x + w > this.width - 1 || y + h > this.height - 1) continue;
+                    let collision = false;
+                    for (let ry = y - 1; ry < y + h + 1; ry++) {
+                        for (let rx = x - 1; rx < x + w + 1; rx++) {
+                            if (this.grid[ry][rx] !== TILE.WALL) { collision = true; break; }
+                        }
+                    }
+                    if (collision) continue;
+                    const rId = this.createRegion(true);
+                    for (let ry = y; ry < y + h; ry++) {
+                        for (let rx = x; rx < x + w; rx++) {
+                            this.grid[ry][rx] = TILE.FLOOR;
+                            this.regions[ry][rx] = rId;
+                        }
+                    }
+                    if (!this.isInstantMode && speed > 10) { this.drawFull(); await this.wait(speed); }
+                }
+                if (!this.isInstantMode) this.drawFull();
+            }
+
+            async fillMazes(currentRunId) {
+                if (!this.isInstantMode) document.getElementById('status').innerText = "Step 2: 填充迷宫";
+                const speed = parseInt(document.getElementById('speed').value);
+                for (let y = 1; y < this.height; y += 2) {
+                    for (let x = 1; x < this.width; x += 2) {
+                        if (this.grid[y][x] === TILE.WALL) {
+                            this.checkInterrupt(currentRunId);
+                            const rId = this.createRegion(false);
+                            await this.growMaze(currentRunId, x, y, rId, speed);
+                        }
+                    }
+                }
+            }
+
+            async growMaze(currentRunId, sx, sy, rId, speed) {
+                const stack = [{ x: sx, y: sy }];
+                this.grid[sy][sx] = TILE.FLOOR;
+                this.regions[sy][sx] = rId;
+                let frames = 0;
+                while (stack.length > 0) {
+                    const curr = stack[stack.length - 1];
+                    const neighbors = [];
+                    for (let d of DIRS) {
+                        const nx = curr.x + d.x * 2;
+                        const ny = curr.y + d.y * 2;
+                        if (nx > 0 && ny > 0 && nx < this.width - 1 && ny < this.height - 1 && this.grid[ny][nx] === TILE.WALL) {
+                            neighbors.push({ x: nx, y: ny, dx: d.x, dy: d.y });
+                        }
+                    }
+                    if (neighbors.length > 0) {
+                        const next = neighbors[Math.floor(Math.random() * neighbors.length)];
+                        this.grid[curr.y + next.dy][curr.x + next.dx] = TILE.FLOOR;
+                        this.regions[curr.y + next.dy][curr.x + next.dx] = rId;
+                        this.grid[next.y][next.x] = TILE.FLOOR;
+                        this.regions[next.y][next.x] = rId;
+                        stack.push({ x: next.x, y: next.y });
+                        if (frames++ % 20 === 0) this.checkInterrupt(currentRunId);
+                        const skipFrame = this.scale < 6 ? 20 : 5;
+                        if (!this.isInstantMode && speed > 0 && frames % skipFrame === 0) {
+                            this.drawFull();
+                            await this.wait(speed / 2);
+                        }
+                    } else {
+                        stack.pop();
+                    }
+                }
+                if (!this.isInstantMode) this.drawFull();
+            }
+
+            async connectRegions(currentRunId) {
+                if (!this.isInstantMode) document.getElementById('status').innerText = "Step 3: 区域联通";
+                const speed = Math.max(20, parseInt(document.getElementById('speed').value) * 3);
+                const chanceRoom = parseInt(document.getElementById('room-chance').value) / 100;
+                const chanceCorr = parseInt(document.getElementById('corr-chance').value) / 100;
+
+                let allConnectors = [];
+                for (let y = 1; y < this.height - 1; y++) {
+                    for (let x = 1; x < this.width - 1; x++) {
+                        if (this.grid[y][x] === TILE.WALL) {
+                            let regions = [];
+                            if (this.grid[y][x - 1] !== TILE.WALL && this.grid[y][x + 1] !== TILE.WALL) regions = [this.regions[y][x - 1], this.regions[y][x + 1]];
+                            else if (this.grid[y - 1][x] !== TILE.WALL && this.grid[y + 1][x] !== TILE.WALL) regions = [this.regions[y - 1][x], this.regions[y + 1][x]];
+                            if (regions.length === 2) allConnectors.push({ x, y, rA: regions[0], rB: regions[1] });
+                        }
+                    }
+                }
+                allConnectors.sort(() => Math.random() - 0.5);
+
+                let keepConnecting = true;
+                while (keepConnecting) {
+                    this.checkInterrupt(currentRunId);
+
+                    let bestConnectorIndex = -1;
+                    let type = 'NONE';
+                    let targetRootToFlood = -1;
+
+                    for (let i = 0; i < allConnectors.length; i++) {
+                        const conn = allConnectors[i];
+                        if (!conn) continue;
+                        const isBeigeA = this.isBeige(conn.rA);
+                        const isBeigeB = this.isBeige(conn.rB);
+                        const rootA = this.findSet(conn.rA);
+                        const rootB = this.findSet(conn.rB);
+
+                        let isCrowded = false;
+                        for (let d of DIRS) {
+                            const nt = this.grid[conn.y + d.y][conn.x + d.x];
+                            if (nt === TILE.DOOR_ROOM || nt === TILE.DOOR_CORRIDOR) { isCrowded = true; break; }
+                        }
+                        if (isCrowded) { allConnectors[i] = null; continue; }
+
+                        if (rootA !== rootB) {
+                            if ((isBeigeA && !isBeigeB) || (!isBeigeA && isBeigeB)) {
+                                bestConnectorIndex = i;
+                                type = 'MERGE';
+                                targetRootToFlood = isBeigeA ? rootB : rootA;
+                                break;
+                            }
+                        } else {
+                            if (isBeigeA && isBeigeB) {
+                                const isRoomA = this.regionIsRoom[conn.rA];
+                                const isRoomB = this.regionIsRoom[conn.rB];
+                                let validLoop = false;
+                                if (!isRoomA && !isRoomB) {
+                                    if (Math.random() < chanceCorr) validLoop = true;
+                                } else {
+                                    const safeA = !isRoomA || this.roomDoorCounts[conn.rA] < 2;
+                                    const safeB = !isRoomB || this.roomDoorCounts[conn.rB] < 2;
+                                    if (safeA && safeB && Math.random() < chanceRoom) validLoop = true;
+                                }
+                                if (validLoop) {
+                                    if (!this.wouldFormArtifact(conn.x, conn.y)) {
+                                        bestConnectorIndex = i;
+                                        type = 'LOOP';
+                                        break;
+                                    }
+                                }
+                                if (!validLoop) allConnectors[i] = null;
+                            }
+                        }
+                    }
+
+                    if (bestConnectorIndex !== -1) {
+                        const conn = allConnectors[bestConnectorIndex];
+                        allConnectors[bestConnectorIndex] = null;
+                        const rA = conn.rA;
+                        const rB = conn.rB;
+                        const isRoomA = this.regionIsRoom[rA];
+                        const isRoomB = this.regionIsRoom[rB];
+                        if (isRoomA) this.roomDoorCounts[rA]++;
+                        if (isRoomB) this.roomDoorCounts[rB]++;
+
+                        if (type === 'LOOP' && !isRoomA && !isRoomB) this.grid[conn.y][conn.x] = TILE.DOOR_CORRIDOR;
+                        else this.grid[conn.y][conn.x] = TILE.DOOR_ROOM;
+
+                        this.drawCell(conn.x, conn.y);
+
+                        if (type === 'MERGE') {
+                            await this.animateFloodFill(conn.x, conn.y, targetRootToFlood, speed);
+                            this.unionSets(rA, rB);
+                            if (!this.isInstantMode) {
+                                this.drawFull();
+                                await this.wait(speed / 2);
+                            }
+                        } else {
+                            await this.wait(speed / 4);
+                        }
+                    } else {
+                        const remaining = allConnectors.filter(c => c !== null);
+                        if (remaining.length === 0 || remaining.length === allConnectors.length) keepConnecting = false;
+                        allConnectors = remaining;
+                    }
+                }
+            }
+
+            async removeDeadEnds(currentRunId) {
+                // 如果没有勾选，直接返回，不再执行移除逻辑
+                if (!document.getElementById('removeDeadEnds').checked) {
+                    document.getElementById('status').innerText = "生成完毕 (保留死胡同)";
+                    return;
+                }
+
+                if (!this.isInstantMode) document.getElementById('status').innerText = "Step 4: 移除死胡同";
+                const speed = parseInt(document.getElementById('speed').value);
+                let done = false;
+
+                while (!done) {
+                    done = true;
+                    this.checkInterrupt(currentRunId);
+                    let changesInThisPass = false;
+
+                    for (let y = 1; y < this.height - 1; y++) {
+                        for (let x = 1; x < this.width - 1; x++) {
+                            const tile = this.grid[y][x];
+                            if (tile !== TILE.FLOOR) continue;
+                            let exits = 0;
+                            for (let d of DIRS) {
+                                if (this.grid[y + d.y][x + d.x] !== TILE.WALL) exits++;
+                            }
+                            if (exits <= 1) {
+                                this.grid[y][x] = TILE.WALL;
+                                this.regions[y][x] = -1;
+                                this.ctx.fillStyle = '#000';
+                                if (!this.isInstantMode) {
+                                    this.ctx.fillRect(x * this.scale, y * this.scale, this.scale, this.scale);
+                                }
+                                changesInThisPass = true;
+                                done = false;
+                                if (!this.isInstantMode && speed > 0) await this.wait(Math.max(1, speed / 5));
+                                else if (!this.isInstantMode && x % 5 === 0) await this.wait(0);
+                            }
+                        }
+                    }
+                    if (!this.isInstantMode && changesInThisPass && speed > 0) await this.wait(speed);
+                }
+
+                if (!this.isInstantMode) document.getElementById('status').innerText = "Step 5: 清理废弃门";
+                for (let y = 1; y < this.height - 1; y++) {
+                    for (let x = 1; x < this.width - 1; x++) {
+                        const tile = this.grid[y][x];
+                        if (tile === TILE.DOOR_ROOM || tile === TILE.DOOR_CORRIDOR) {
+                            let valid = false;
+                            if (this.grid[y][x - 1] !== TILE.WALL && this.grid[y][x + 1] !== TILE.WALL) valid = true;
+                            if (this.grid[y - 1][x] !== TILE.WALL && this.grid[y + 1][x] !== TILE.WALL) valid = true;
+                            if (!valid) {
+                                this.grid[y][x] = TILE.WALL;
+                                if (!this.isInstantMode) {
+                                    this.ctx.fillStyle = '#000';
+                                    this.ctx.fillRect(x * this.scale, y * this.scale, this.scale, this.scale);
+                                    if (speed > 0) await this.wait(10);
+                                }
+                            }
+                        }
+                    }
+                }
+                if (!this.isInstantMode) this.drawFull();
+                document.getElementById('status').innerText = "生成完毕 (All Beige!)";
+            }
+
+            async generate(instant = false) {
+                this.runId++;
+                const myId = this.runId;
+                this.isInstantMode = instant;
+
+                const w = parseInt(document.getElementById('width').value);
+                const h = parseInt(document.getElementById('height').value);
+                this.resize(w, h);
+                this.reset();
+
+                try {
+                    const attempts = parseInt(document.getElementById('attempts').value);
+                    await this.placeRooms(myId, attempts);
+                    await this.fillMazes(myId);
+                    await this.connectRegions(myId);
+                    await this.removeDeadEnds(myId);
+
+                    if (this.isInstantMode) {
+                        this.isInstantMode = false;
+                        this.drawFull(true);
+                        document.getElementById('status').innerText = "生成完毕 (Instant!)";
+                    }
+
+                } catch (e) {
+                    if (e !== 'STOP') console.error(e);
+                }
+            }
+        }
+
+        const dungeon = new Dungeon(document.getElementById('canvas'));
+
+        document.getElementById('btn-run').onclick = () => dungeon.generate(false);
+        document.getElementById('btn-instant').onclick = () => dungeon.generate(true);
+
+        ['speed', 'attempts', 'corr-chance', 'room-chance', 'width', 'height'].forEach(id => {
+            const el = document.getElementById(id);
+            const label = document.getElementById('v-' + id);
+            el.oninput = () => label.innerText = el.value + (id.includes('chance') ? '%' : (id === 'speed' ? 'ms' : ''));
+        });
+
+        dungeon.generate(false);
+
+    </script>
+</body>
+
+</html>

@@ -1,0 +1,301 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>老旧曲面显示屏效果（单文件示例）</title>
+  <style>
+    /* -----------------------------
+       基本布局：整页容器
+       ----------------------------- */
+    html, body { height: 100%; margin: 0; }
+    body {
+      background: #050507; /* 背景深色让屏幕更突显 */
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+      color: #dfe7ff;
+      overflow: hidden; /* 禁止滚动，模拟整屏显示 */
+      display: grid;
+      place-items: center;
+    }
+
+    /* 屏幕容器：添加透视以呈现曲面感 */
+    .screen-wrap {
+      width: min(1100px, 92vw);
+      height: min(700px, 76vh);
+      position: relative;
+      perspective: 1600px; /* 让内部具有 3D 透视 */
+    }
+
+    /* 实际“显示器”表面 */
+    .screen {
+      filter: url(#barrel-distort); /* ★ 新增：让外框也参与曲面畸变 */
+      width: 100%;
+      height: 100%;
+      position: relative;
+      transform-style: preserve-3d;
+      /* 轻微旋转，让它更像旧显示器的仰角 */
+      transform: rotateX(7deg) translateZ(0);
+      border-radius: 28px;
+      box-shadow: 0 40px 80px rgba(0,0,0,0.7), inset 0 8px 40px rgba(255,255,255,0.02);
+      overflow: hidden;      
+      /* CRT 常见的绿色蓝色调和微弱背光溢出 */
+      background: radial-gradient(circle at 30% 20%, rgba(60,120,255,0.06), transparent 12%),
+                  linear-gradient(180deg, rgba(0,20,40,0.35), rgba(0,0,0,0.5));
+      border: 1px solid rgba(255,255,255,0.03);
+    }
+
+    /* 屏幕内容区域（会被 "弯曲" 变形） */
+    .content {
+      position: absolute;
+      inset: 6% 5%; /* 留一点边框作为屏幕边缘 */
+      background: linear-gradient(180deg, rgba(3,10,20,0.85), rgba(2,6,12,0.9));
+      border-radius: 14px;
+      overflow: hidden;
+      /* 关键：通过 SVG filter 实现桶形畸变（barrel distortion） */
+      filter: url(#barrel-distort);
+      /* 稍微放大，避免边缘出现空隙 */
+      transform: translateZ(40px) scale(1.03);
+      display: grid;
+      grid-template-rows: auto 1fr;
+      gap: 12px;
+      padding: 28px 36px;
+      box-sizing: border-box;
+    }
+
+    /* 顶部的标题条，模拟旧显示器上面的 HUD */
+    .title {
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      color: #bfe2ff;
+      text-shadow: 0 1px 0 rgba(255,255,255,0.02);
+      display:flex;align-items:center;gap:12px;font-size:16px
+    }
+
+    .title .led {
+      width:10px;height:10px;border-radius:50%;background:#82ff9f;box-shadow:0 0 8px rgba(130,255,159,0.6);
+    }
+
+    /* 主要显示区域：示例文本/内容，保持高对比度以显现扫描线 */
+    .main {
+      background: linear-gradient(180deg, rgba(0,0,0,0.02), rgba(255,255,255,0.02));
+      padding: 18px;
+      border-radius: 10px;
+      font-family: 'SFMono-Regular', Menlo, Monaco, 'Courier New', monospace;
+      font-size: 18px;
+      line-height: 1.6;
+      color: #bfe8ff;
+      position: relative;
+    }
+
+    /* 扫描线层（重复线条） */
+    .scanlines {
+      position: absolute; inset: 0; pointer-events: none; mix-blend-mode: soft-light;
+      background-image: repeating-linear-gradient(
+        to bottom,
+        rgba(0,0,0,0.05) 0px,
+        rgba(0,0,0,0.05) 1px,
+        rgba(255,255,255,0.02) 1px,
+        rgba(255,255,255,0.02) 2px
+      );
+      opacity: 0.8;
+      transform: translateZ(50px) scaleY(1.02);
+    }
+
+    /* 柔和的眩光高光（曲面） */
+    .glare {
+      position: absolute; pointer-events:none; inset: 0; mix-blend-mode: screen;
+      background: radial-gradient(600px 220px at 18% 12%, rgba(255,255,255,0.06), transparent 6%),
+                  radial-gradient(500px 180px at 85% 70%, rgba(120,160,255,0.03), transparent 12%);
+      opacity: 0.8;
+      filter: blur(8px);
+    }
+
+    /* 噪点（动态） */
+    canvas.noise {
+      position: absolute; inset: 0; width:100%; height:100%; pointer-events:none; mix-blend-mode: overlay; opacity:0.12;
+    }
+
+    /* 四周暗角，增强沉浸感 */
+    .vignette {
+      position:absolute;inset:0;pointer-events:none;background:radial-gradient(closest-side, transparent 60%, rgba(0,0,0,0.45));
+      mix-blend-mode: multiply;
+    }
+
+    /* 屏幕边框（塑料/铝合金的微妙边缘） */
+    .bezel {
+      position:absolute;inset:0;border-radius:28px;pointer-events:none;
+      box-shadow: inset 0 2px 12px rgba(255,255,255,0.02), inset 0 -6px 18px rgba(0,0,0,0.6);
+    }
+
+    /* 屏幕外部装饰（底座） */
+    .stand {
+      position:absolute;left:50%;transform:translateX(-50%);bottom:-36px;width:160px;height:48px;border-radius:10px;background:linear-gradient(180deg,#0b0b0f,#05050a);box-shadow:0 18px 30px rgba(0,0,0,0.6);
+      display:flex;align-items:center;justify-content:center;color:#9fb5ff;font-size:12px;letter-spacing:0.08em
+    }
+
+    /* 小按钮与刻度（装饰） */
+    .controls {position:absolute;right:18px;bottom:12px;display:flex;gap:8px;align-items:center}
+    .btn{width:12px;height:8px;border-radius:2px;background:linear-gradient(180deg,#1b2230,#0d1115);box-shadow:inset 0 1px 0 rgba(255,255,255,0.02)}
+
+    /* 小屏幕里的一些示例文本样式（像素风） */
+    .pixel {font-feature-settings: 'tnum' 1; letter-spacing:0.02em}
+
+    /* 动画：微弱的屏幕呼吸
+       注意不要太强，以免引起不适 */
+    @keyframes breathe {
+      0% { box-shadow: 0 36px 72px rgba(0,0,0,0.75); }
+      50% { box-shadow: 0 44px 88px rgba(0,0,0,0.78); }
+      100% { box-shadow: 0 36px 72px rgba(0,0,0,0.75); }
+    }
+    .screen { animation: breathe 6s ease-in-out infinite; }
+
+    /* 小屏闪（瞬态亮度抖动） */
+    @keyframes flicker {
+      0% { opacity: 0.98; }
+      7% { opacity: 0.88; }
+      10% { opacity: 0.99; }
+      30% { opacity: 0.95; }
+      100% { opacity: 0.98; }
+    }
+    .main { animation: flicker 8s steps(2, end) infinite; }
+
+    /* 响应式缩放在非常窄的屏幕上 */
+    @media (max-width:600px){ .screen-wrap{width:96vw;height:60vh} }
+  </style>
+</head>
+<body>
+
+<div class="screen-wrap">
+  <div class="screen">
+    <div class="content" id="content">
+      <div class="title"><span class="led"></span> OLD CURVED DISPLAY • demo</div>
+
+      <div class="main pixel" id="main">
+        <h2>欢迎 — 这是一个老旧曲面显示屏效果演示</h2>
+        <p>示例文本：
+        这段文字位于“曲面”显示区域内部。使用 SVG 桶形失真滤镜（barrel distortion）、扫描线层、噪点画布与动画抖动来模拟 CRT / 早期曲面屏的视觉特点。
+        </p>
+        <pre>
+  // 这是展示用的“控制台”风格文本
+  > system boot: 1987-06-14
+  > video: curved-tube v1.4
+  > brightness: 78%
+        </pre>
+      </div>
+
+      <canvas class="noise" id="noiseCanvas"></canvas>
+      <div class="scanlines"></div>
+      <div class="glare"></div>
+      <div class="vignette"></div>
+    </div>
+
+    <div class="bezel"></div>
+    <div class="stand">VINTAGE MONITOR</div>
+    <div class="controls">
+      <div class="btn"></div><div class="btn"></div><div class="btn"></div>
+    </div>
+  </div>
+</div>
+
+<!-- SVG: barrel distortion filter
+     实现思路：使用 feTurbulence + feDisplacementMap 做轻微的波纹与桶形变形。
+     这个滤镜应用到 .content 上会让内部元素看起来被弯曲。
+ -->
+<svg style="position:absolute;width:0;height:0;pointer-events:none;" aria-hidden>
+  <filter id="barrel-distort">
+    <!-- 轻微噪声，制造老旧屏幕的不稳定 -->
+    <feTurbulence type="fractalNoise" baseFrequency="0.8" numOctaves="1" seed="2" result="noise" />
+    <feGaussianBlur in="noise" stdDeviation="0.4" result="nblur" />
+
+    <!-- 生成用于桶形位移的场 (基于坐标) -->
+    <!-- 这里使用 feImage + feComposite 的技巧来制作一个径向位移图 -->
+    <feImage xlink:href="data:image/svg+xml;utf8,
+      <svg xmlns='http://www.w3.org/2000/svg' width='512' height='512'>
+        <defs>
+          <radialGradient id='g'><stop offset='0' stop-color='rgba(255,255,255,0)' /><stop offset='1' stop-color='rgba(255,255,255,1)' /></radialGradient>
+        </defs>
+        <rect width='512' height='512' fill='url(%23g)' />
+      </svg>"
+      result="radial"/>
+
+    <!-- 将径向图与噪声混合，得到更自然的微小波动 -->
+    <feBlend in="radial" in2="nblur" mode="multiply" result="map" />
+
+    <!-- 使用 map 做位移：scale 控制桶形强度（负值） -->
+    <feDisplacementMap in="SourceGraphic" in2="map" scale="18" xChannelSelector="R" yChannelSelector="G" />
+  </filter>
+</svg>
+
+<script>
+// ------------- JavaScript：生成动态噪点并控制抖动 -------------
+(function(){
+  const canvas = document.getElementById('noiseCanvas');
+  const main = document.getElementById('main');
+  const content = document.getElementById('content');
+  const dpr = Math.max(1, window.devicePixelRatio || 1);
+
+  function resize(){
+    const rect = content.getBoundingClientRect();
+    canvas.width = Math.round(rect.width * dpr);
+    canvas.height = Math.round(rect.height * dpr);
+    canvas.style.width = rect.width + 'px';
+    canvas.style.height = rect.height + 'px';
+    canvas.getContext('2d').scale(dpr, dpr);
+  }
+  window.addEventListener('resize', resize);
+  resize();
+
+  const ctx = canvas.getContext('2d');
+  let frame = 0;
+
+  // 每帧绘制噪点（低强度）
+  function drawNoise(){
+    frame++;
+    const w = canvas.width / dpr;
+    const h = canvas.height / dpr;
+
+    // 清空并画一个轻微亮度变化的层
+    ctx.clearRect(0,0,w,h);
+    const imgData = ctx.createImageData(Math.min(256, w), Math.min(256, h));
+    const px = imgData.data;
+    for(let i=0;i<px.length;i+=4){
+      // 随机噪点：基于帧数制造节奏感
+      const v = 150 + (Math.random()*55 - 28) + Math.sin(frame*0.02)*12;
+      px[i] = px[i+1] = px[i+2] = v | 0;
+      px[i+3] = (Math.random() * 18) | 0; // alpha
+    }
+    // 拉伸小图到全屏以节省开销
+    ctx.putImageData(imgData, 0, 0);
+    ctx.globalCompositeOperation = 'lighter';
+    ctx.fillStyle = 'rgba(0,0,0,0.02)';
+    ctx.fillRect(0,0,w,h);
+    ctx.globalCompositeOperation = 'source-over';
+
+    // 微小的水平抖动（模拟老显示器的水平偏移）
+    const jitterX = Math.sin(frame * 0.02) * 0.6;
+    content.style.transform = `translateZ(40px) scale(1.03) translateX(${jitterX}px)`;
+
+    requestAnimationFrame(drawNoise);
+  }
+  drawNoise();
+
+  // 点击内容切换演示文本亮度（示例互动）
+  main.addEventListener('click', ()=>{
+    main.style.transition = 'filter 420ms ease';
+    main.style.filter = 'brightness(1.12)';
+    setTimeout(()=> main.style.filter = '', 420);
+  });
+
+  // 可选：短时微闪（随机）
+  setInterval(()=>{
+    if(Math.random() < 0.12){
+      content.style.filter = 'url(#barrel-distort) brightness(1.06)';
+      setTimeout(()=> content.style.filter = 'url(#barrel-distort)', 180 + Math.random()*300);
+    }
+  }, 800);
+
+})();
+</script>
+
+</body>
+</html>

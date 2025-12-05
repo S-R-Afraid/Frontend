@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>无重叠实心噪声方格</title>
+    <style>
+      body {
+        margin: 0;
+        background: #222;
+        font-family: sans-serif;
+        padding: 20px;
+      }
+
+      .grid-container {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+        gap: 20px;
+      }
+
+      .card {
+        background: #000;
+        height: 350px;
+        border-radius: 8px;
+        overflow: hidden;
+        position: relative;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+      }
+
+      .card-label {
+        position: absolute;
+        top: 10px;
+        left: 10px;
+        color: white;
+        background: rgba(0, 0, 0, 0.6);
+        padding: 4px 8px;
+        border-radius: 4px;
+        pointer-events: none;
+        font-size: 12px;
+        z-index: 10;
+        line-height: 1.5;
+      }
+    </style>
+  </head>
+  <body>
+    
+    
+    <script>
+      /* ---------- 1. 静态噪声工具类 ---------- */
+      const Perlin = (function () {
+        const P = new Uint8Array(512);
+        const grad = [
+          [1, 1, 0],
+          [-1, 1, 0],
+          [1, -1, 0],
+          [-1, -1, 0],
+          [1, 0, 1],
+          [-1, 0, 1],
+          [1, 0, -1],
+          [-1, 0, -1],
+          [0, 1, 1],
+          [0, -1, 1],
+          [0, 1, -1],
+          [0, -1, -1],
+        ];
+        for (let i = 0; i < 256; i++)
+          P[i] = P[i + 256] = Math.floor(Math.random() * 256);
+        function fade(t) {
+          return t * t * t * (t * (t * 6 - 15) + 10);
+        }
+        function lerp(t, a, b) {
+          return a + t * (b - a);
+        }
+        function grad3(hash, x, y, z) {
+          const g = grad[hash & 11];
+          return g[0] * x + g[1] * y + g[2] * z;
+        }
+
+        return {
+          noise: function (x, y, z) {
+            const X = Math.floor(x) & 255,
+              Y = Math.floor(y) & 255,
+              Z = Math.floor(z) & 255;
+            x -= Math.floor(x);
+            y -= Math.floor(y);
+            z -= Math.floor(z);
+            const u = fade(x),
+              v = fade(y),
+              w = fade(z);
+            const A = P[X] + Y,
+              AA = P[A] + Z,
+              AB = P[A + 1] + Z;
+            const B = P[X + 1] + Y,
+              BA = P[B] + Z,
+              BB = P[B + 1] + Z;
+            return lerp(
+              w,
+              lerp(
+                v,
+                lerp(u, grad3(P[AA], x, y, z), grad3(P[BA], x - 1, y, z)),
+                lerp(
+                  u,
+                  grad3(P[AB], x, y - 1, z),
+                  grad3(P[BB], x - 1, y - 1, z)
+                )
+              ),
+              lerp(
+                v,
+                lerp(
+                  u,
+                  grad3(P[AA + 1], x, y, z - 1),
+                  grad3(P[BA + 1], x - 1, y, z - 1)
+                ),
+                lerp(
+                  u,
+                  grad3(P[AB + 1], x, y - 1, z - 1),
+                  grad3(P[BB + 1], x - 1, y - 1, z - 1)
+                )
+              )
+            );
+          },
+        };
+      })();
+
+      /* ---------- 2. 噪声网格类 ---------- */
+      class NoiseGrid {
+        constructor(containerOrId, options = {}) {
+          this.container =
+            typeof containerOrId === "string"
+              ? document.querySelector(containerOrId)
+              : containerOrId;
+          if (!this.container) throw new Error("Container not found");
+
+          this.config = Object.assign(
+            {
+              cellSize: 39,
+              rectSize: 28,
+              bgColor: "#000000",
+              color: "#ffffff",
+              filled: false,
+              speed: 1.0,
+              checkerboard: false,
+              checkerboardColor: "#ffffff",
+              seedOffset: Math.random() * 100,
+            },
+            options
+          );
+
+          this.canvas = document.createElement("canvas");
+          this.ctx = this.canvas.getContext("2d");
+          this.container.appendChild(this.canvas);
+
+          this.width = 0;
+          this.height = 0;
+          this.t = 0;
+          this.amp = 0;
+
+          this.init();
+        }
+
+        init() {
+          this.resizeObserver = new ResizeObserver(() => this.resize());
+          this.resizeObserver.observe(this.container);
+          this.loop = this.loop.bind(this);
+          this.loop();
+        }
+
+        resize() {
+          const rect = this.container.getBoundingClientRect();
+          const dpr = window.devicePixelRatio || 1;
+          this.canvas.width = rect.width * dpr;
+          this.canvas.height = rect.height * dpr;
+          this.canvas.style.width = `${rect.width}px`;
+          this.canvas.style.height = `${rect.height}px`;
+          this.ctx.scale(dpr, dpr);
+          this.width = rect.width;
+          this.height = rect.height;
+        }
+
+        loop() {
+          this.t++;
+          this.amp +=
+            (Math.sin((this.t / 30) * this.config.speed) ** 2 / 30) *
+            this.config.speed;
+
+          this.ctx.fillStyle = this.config.bgColor;
+          this.ctx.fillRect(0, 0, this.width, this.height);
+
+          const {
+            cellSize,
+            rectSize,
+            color,
+            filled,
+            checkerboard,
+            checkerboardColor,
+            seedOffset,
+          } = this.config;
+
+          // --- 关键修改：计算绘制尺寸 ---
+          let drawSize = rectSize;
+
+          if (filled) {
+            // 几何原理：正方形对角线 = 边长 * √2
+            // 为了防止旋转时重叠，对角线长度不能超过网格间距 cellSize
+            // 所以：最大安全边长 = cellSize / √2
+            const maxSafeSize = cellSize / Math.SQRT2; // Math.SQRT2 ≈ 1.414
+
+            // 取最小值：如果用户设置的 rectSize 太大，就强制缩小到安全值
+            // 减去 1px 是为了留一点点视觉缝隙，避免像素级抗锯齿导致的微弱粘连
+            drawSize = Math.min(rectSize, maxSafeSize - 1);
+          }
+          // ---------------------------
+
+          const half = drawSize / 2;
+
+          let idxY = 0;
+          for (let y = 0; y < this.height + cellSize; y += cellSize) {
+            let idxX = 0;
+            for (let x = 0; x < this.width + cellSize; x += cellSize) {
+              const noiseScale = 720;
+              const N = Perlin.noise(
+                (x + seedOffset) / noiseScale,
+                (y + seedOffset) / noiseScale,
+                Math.floor((this.t / 30 / Math.PI) * this.config.speed)
+              );
+
+              const quant = Math.floor((N % 0.1) * 50);
+              const dir = N > 0.5 ? 1 : -1;
+              const ang = Math.PI / 4 + quant * this.amp * dir;
+
+              let currentColor = color;
+              if (checkerboard) {
+                const isAlt = (idxX + idxY) % 2 !== 0;
+                if (isAlt) currentColor = checkerboardColor;
+              }
+
+              this.ctx.save();
+              this.ctx.translate(x, y);
+              this.ctx.rotate(ang);
+
+              if (filled) {
+                this.ctx.fillStyle = currentColor;
+                // 使用计算后的 drawSize
+                this.ctx.fillRect(-half, -half, drawSize, drawSize);
+              } else {
+                this.ctx.strokeStyle = currentColor;
+                this.ctx.lineWidth = 2;
+                // 描边模式通常允许重叠，所以仍然可以使用用户的原始 rectSize 或 drawSize
+                // 这里使用 drawSize 保持逻辑统一，如果希望描边模式显得更大，可以改回 rectSize
+                this.ctx.strokeRect(-half, -half, rectSize, rectSize);
+              }
+
+              this.ctx.restore();
+              idxX++;
+            }
+            idxY++;
+          }
+          requestAnimationFrame(this.loop);
+        }
+      }
+    </script>
+    <div class="grid-container">
+      <!-- 实例 1 -->
+      <div class="card" id="container1">
+        <div class="card-label">
+          1. 实心无重叠 (自动缩放)<br />配置尺寸: 35px -> 实际: 27px
+        </div>
+      </div>
+
+      <!-- 实例 2 -->
+      <div class="card" id="container2">
+        <div class="card-label">2. 棋盘格 (完美平铺)</div>
+      </div>
+
+      <!-- 实例 3 -->
+      <div class="card" id="container3">
+        <div class="card-label">
+          3. 经典描边 <br />描边模式不受限制
+        </div>
+      </div>
+      <!-- 实例 4 -->
+      <div class="card" id="container4">
+        <div class="card-label">
+          4. 很多且很小
+        </div>
+      </div>
+    </div>
+    <script>
+      /* ---------- 3. 演示配置 ---------- */
+
+      // 实例 1: 尝试设置非常大的方块 (35px)，但代码会自动缩小它以适应 40px 间距
+      new NoiseGrid("#container1", {
+        cellSize: 40,
+        rectSize: 35, // 用户尝试设置大尺寸
+        filled: true, // 开启填充
+        color: "#00dcb4", // 青色
+        speed: 0.8,
+      });
+
+      // 实例 2: 棋盘格
+      new NoiseGrid("#container2", {
+        bgColor: "#222",
+        color: "#ffaa00", // 橙色
+        filled: true,
+        checkerboard: true,
+        checkerboardColor: "#333", // 深灰
+        cellSize: 30,
+        rectSize: 30, // 代码会自动将其修正为 approx 20px
+        speed: 1.2,
+      });
+
+      // 实例 3: 对比组 - 描边模式 (不受此限制，允许重叠)
+      new NoiseGrid("#container3", {
+        bgColor: "#000",
+        color: "#ff0055",
+        filled: false, // 描边
+        cellSize: 40,
+        rectSize: 35, // 这里 35px 会被完整保留，你会看到线条互相穿插
+        speed: 1.0,
+      });
+      // 实例 4: 密集蓝色
+new NoiseGrid('#container4', {
+  bgColor: '#000d1a',
+  color: '#00aaff',
+  cellSize: 15,           // 很密
+  rectSize: 10,
+  speed: 0.5              // 慢速
+});
+    </script>
+  </body>
+</html>

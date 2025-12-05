@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Animated Cursor Trail Effects</title>
+  <style>
+    * {
+      margin:0;
+      padding:0;
+      box-sizing: border-box;
+    }
+    body {
+      background-color: #111;
+      min-height: 100vh;
+      cursor: none;
+    }
+    .cursor {
+      position: fixed;
+      pointer-events: none;
+      z-index: 9999;
+    }
+    .cursor .box {
+      position: absolute;
+      width: 10px;
+      height: 5px;
+      background-color: #00ff9a;
+      box-shadow: 0 0 15px #00ff9a, 0 0 50px #00ff9a;
+      border-radius: 50%;
+      transform-origin: center 50px;
+    }
+  </style>
+</head>
+<body>
+  <div class="cursor"></div>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.13.0/gsap.min.js"></script>
+  <script>
+    document.addEventListener("DOMContentLoaded", () => {
+      let cursor = document.querySelector(".cursor");
+      for(let i = 0; i < 36; i++) {
+        let span = document.createElement("span");
+        span.classList.add('box');
+        span.style.setProperty("--i", i+1);
+        span.style.filter = `hue-rotate(${i*10}deg)`;
+        cursor.appendChild(span);
+        gsap.set(span, {
+          x: window.innerWidth / 2,
+          y: window.innerHeight / 2,
+          rotation: i * 10
+        });
+      }
+    });
+    document.addEventListener("mousemove", e => {
+      gsap.to(".box", {
+        x: e.clientX,
+        y: e.clientY,
+        stagger: 0.02,
+        ease: "power2.out"
+      });
+    });
+  </script>
+</body>
+</html>

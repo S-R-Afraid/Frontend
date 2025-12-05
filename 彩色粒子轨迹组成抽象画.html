@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Generative Art</title>
+  <style>
+    body { margin: 0; padding: 0; overflow: hidden; background: #000; }
+    canvas { display: block; }
+  </style>
+  <!-- 引入 p5.js 库 -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.4.0/p5.min.js"></script>
+</head>
+<body>
+  <script>
+    // 这里粘贴原本的压缩代码
+    // 为了确保运行稳定，我加了一点点兼容性处理(window.draw)
+    
+    let t=0;
+    let $=[];
+    let W; // 声明变量防止报错
+
+    window.draw = _ => {
+      // 第一帧初始化画布
+      if(t===0) {
+        W=720;
+        createCanvas(W,W);
+        // 居中画布
+        let cvs = document.querySelector('canvas');
+        cvs.style.position = 'absolute';
+        cvs.style.left = '50%';
+        cvs.style.top = '50%';
+        cvs.style.transform = 'translate(-50%, -50%)';
+      }
+      t++;
+
+      B=blendMode
+      colorMode(HSB)
+      
+      B(BLEND)
+      background(0,.02) // 产生拖尾
+      
+      B(ADD)
+      R=random
+      
+      // 限制数组长度，防止内存溢出，因为原代码依赖 t%W 循环覆盖
+      $[t%W]={x:R(W),y:R(W)}
+      
+      $.map(p=>{
+        // 核心数学计算
+        let noiseVal = noise((p.x/360),(p.y/360),t/W/2);
+        let D = 2**int(noiseVal*15%5+2)*3;
+        
+        fill(D, 80, W);
+        noStroke(); // 增加这就话去掉描边，效果更好
+        
+        // 运动更新
+        p.x += cos(p.y/D)*9;
+        p.y += sin(p.x/D)*9;
+        
+        circle(p.x, p.y, 2);
+      })
+    }
+  </script>
+</body>
+</html>

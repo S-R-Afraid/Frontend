@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>faulttext</title>
+</head>
+<style>
+    * {
+        font-size: 2vmin;
+        margin: 0;
+        padding: 0;
+    }
+
+    body {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        width: 100%;
+        height: 100vh;
+        background-color: #000;
+        overflow: hidden;
+    }
+
+    .container {
+        position: absolute;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        cursor: pointer;
+    }
+
+    .faulttext {
+        position: absolute;
+        font-family: Impact, sans-serif;
+        font-size: 5rem;
+        color: #fff;
+        letter-spacing: 0.5rem;
+        user-select: none;
+    }
+
+    .faulttext_fault::after,
+    .faulttext_fault::before {
+        content: "文止墨";
+        position: absolute;
+        left: 0;
+        top: 0;
+        mix-blend-mode: screen;
+    }
+
+    .faulttext_fault::after {
+        color: #ff0000;
+        transform: translateX(2%);
+    }
+
+    .faulttext_fault::before {
+        color: #0000ff;
+        transform: translateX(-2%);
+    }
+</style>
+
+<body>
+    <div class="container" onclick="faulttext.fault()">
+        <p class="faulttext">文止墨</p>
+        <p class="faulttext">文止墨</p>
+        <p class="faulttext">文止墨</p>
+        <p class="faulttext">文止墨</p>
+    </div>
+</body>
+<script>
+    // JIEJOE produce
+    // b站主页：https://space.bilibili.com/3546390319860710
+    const faulttext = {
+        player: {},
+        texts: [],
+        init() {
+            this.texts = [...document.getElementsByClassName('faulttext')];
+        },
+        fault() {
+            clearInterval(this.player);
+            setTimeout(() => {
+                clearInterval(this.player);
+                this.texts.forEach((text) => {
+                    text.classList.remove("faulttext_fault");
+                    text.style.transform = '';
+                    text.style.clipPath = '';
+                });
+            }, 1000)
+            this.player = setInterval(() => {
+                this.texts.forEach((text) => {
+                    text.classList.add("faulttext_fault");
+                    text.style.transform = `translate(${Math.random() * 60 - 30}%,${Math.random() * 60 - 30}%)`;
+                    let x = Math.random() * 100;
+                    let y = Math.random() * 100;
+                    let h = Math.random() * 50 + 50;
+                    let w = Math.random() * 40 + 10;
+                    text.style.clipPath = `polygon(${x}% ${y}%, ${x + w}% ${y}%, ${x + w}% ${y + h}%, ${x}% ${y + h}%)`
+                })
+            }, 30);
+        }
+    };
+    faulttext.init();
+</script>
+
+</html>

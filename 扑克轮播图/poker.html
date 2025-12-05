@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Pokers — fly right, buffer from left</title>
+    <style>
+      div {
+        user-select: none;
+      }
+      * {
+        font-size: 2vmin;
+        margin: 0;
+        padding: 0;
+      }
+      body {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        width: 100%;
+        height: 100vh;
+        background: #000;
+        overflow: hidden;
+      }
+
+      .container {
+        position: absolute;
+        width: 45rem;
+        height: 25rem;
+        margin-bottom: 1rem;
+        /* keep stacking context */
+      }
+
+      .poker {
+        position: absolute;
+        width: 20rem;
+        height: 26rem;
+        border: 0.15rem solid #fff;
+        border-radius: 1.5rem;
+        background-color: #17f700;
+        transform-origin: center center; /* 中心旋转 */
+        overflow: hidden;
+        cursor: pointer;
+        box-shadow: 5px 5px 20px rgba(0, 0, 0, 0.5);
+        transition: transform 0.6s ease, box-shadow 0.6s ease;
+      }
+
+      .poker img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        display: block;
+      }
+
+      .poker1 {
+        transform: rotate(-10deg);
+      }
+      .poker2 {
+        transform: rotate(-6deg) translate(35%, -12%);
+      }
+      .poker3 {
+        transform: rotate(-2deg) translate(65%, -19%);
+      }
+      .poker4 {
+        transform: rotate(2deg) translate(95%, -26%);
+      }
+      .poker5 {
+        transform: rotate(6deg) translate(125%, -23%);
+      }
+
+      /* 顶层牌向右飞出 */
+      @keyframes flyOutRight {
+        0% {
+          transform: none;
+          opacity: 1;
+        }
+        70% {
+          transform: translateX(60vw) translateY(-4vh) scale(1.05) rotate(6deg);
+          opacity: 1;
+        }
+        100% {
+          transform: translateX(120vw) translateY(-6vh) scale(1.1) rotate(10deg);
+          opacity: 0;
+        }
+      }
+
+      /* 新牌从左侧飞入到牌堆（视觉上位于后方）*/
+      @keyframes flyInFromLeft {
+        0% {
+          transform: translateX(-120vw) translateY(6vh) scale(0.95)
+            rotate(-8deg);
+          opacity: 0;
+        }
+        80% {
+          opacity: 1;
+          transform: translateX(-10vw) translateY(2vh) scale(1.02) rotate(-2deg);
+        }
+        100% {
+          transform: none;
+          opacity: 1;
+        }
+      }
+
+      .flying-right {
+        animation: flyOutRight 0.6s cubic-bezier(0.2, 0.9, 0.2, 1) forwards;
+        pointer-events: none;
+      }
+
+      .buffer {
+        position: absolute;
+        width: 20rem;
+        height: 26rem;
+        border: 0.15rem solid #fff;
+        border-radius: 1.5rem;
+        overflow: hidden;
+        /* 关键：放到后面，不覆盖现有牌 */
+        z-index: -1;
+        animation: flyInFromLeft 0.6s cubic-bezier(0.2, 0.9, 0.2, 1) forwards;
+        will-change: transform, opacity;
+        background: #fff;
+      }
+
+      .buffer img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        display: block;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <div class="poker poker1">
+        <img src="./photos/poker (4).webp" />
+      </div>
+      <div class="poker poker2">
+        <img src="./photos/poker (3).webp" />
+      </div>
+      <div class="poker poker3">
+        <img src="./photos/poker (2).webp" />
+      </div>
+      <div class="poker poker4">
+        <img src="./photos/poker (1).webp" />
+      </div>
+      <div class="poker poker5">
+        <img src="./photos/poker (0).webp" />
+      </div>
+    </div>
+
+    <script>
+      const poker = {
+        imgs: [],
+        img_index: 0,
+        poker_eles: [],
+        selected: null,
+        transform_datas: [
+          "rotate(-10deg)",
+          "rotate(-6deg) translate(35%, -12%)",
+          "rotate(-2deg) translate(65%, -19%)",
+          "rotate(2deg) translate(95%, -26%)",
+          "rotate(6deg) translate(125%, -23%)",
+        ],
+        init() {
+          // 预加载图片
+          for (let i = 0; i < 10; i++) {
+            const img = new Image();
+            img.src = `./photos/poker (${i}).webp`;
+            this.imgs.push(img);
+          }
+
+          // 初始化每张牌
+          this.poker_eles = [...document.getElementsByClassName("poker")];
+          this.poker_eles.forEach((ele, index) => {
+            ele.nums = index;
+            ele.isSelected = false;
+            ele.style.zIndex = index;
+            ele.style.transform = this.transform_datas[index];
+            ele.style.transition = "transform 0.6s ease";
+            ele.addEventListener("click", () => this.onClick(ele));
+
+            // 全局鼠标移动监听
+            window.addEventListener("mousemove", (e) => {
+              const selected = poker.selected;
+              if (!selected) return;
+
+              // 取消 transition，鼠标移动实时跟随
+              selected.style.transition = "none";
+
+              const rect = selected.getBoundingClientRect();
+              const cx = rect.left + rect.width / 2;
+              const cy = rect.top + rect.height / 2;
+
+              const dx = e.clientX - cx;
+              const dy = e.clientY - cy;
+
+              const maxAngle = 25; // 最大旋转角度，降低太大角度可防止多圈
+
+              // 限制旋转角度在 -maxAngle ~ +maxAngle
+              const rotateY = Math.max(
+                Math.min((dx / (rect.width / 2)) * maxAngle, maxAngle),
+                -maxAngle
+              );
+              const rotateX = Math.max(
+                Math.min((-dy / (rect.height / 2)) * maxAngle, maxAngle),
+                -maxAngle
+              );
+
+              selected.style.transform = `translateY(-300px) scale(1.1) rotateX(${rotateX}deg) rotateY(${rotateY}deg)`;
+
+              const shadowX = -rotateY * 2; // X 偏移，放大比例
+              const shadowY = rotateX * 2; // Y 偏移，放大比例
+              const shadowBlur = 30 + Math.abs(rotateX) + Math.abs(rotateY); // 模糊更大
+              selected.style.boxShadow = `${shadowX}px ${shadowY}px ${shadowBlur}px rgba(0,0,0,0.8)`; // 不透明度增加到0.8
+            });
+
+            // 鼠标离开窗口或取消展示牌时平滑回位
+            function resetSelectedTransform(selected) {
+              if (!selected) return;
+              // 清除 selected，防止 mousemove 继续更新
+              this.selected = null;
+              selected.isSelected = false;
+
+              selected.style.transition = "transform 0.4s ease";
+              selected.style.transform = "translateY(-300px) scale(1.1)";
+              //selected.style.boxShadow = "none"; // 阴影消失
+
+              setTimeout(() => {
+                selected.style.transition = "transform 0.6s ease";
+              }, 400);
+            }
+
+            window.addEventListener("mouseleave", () => {
+              resetSelectedTransform(poker.selected);
+            });
+          });
+
+          this.img_index = this.poker_eles.length;
+        },
+
+        onClick(ele) {
+          const maxZ = Math.max(
+            ...this.poker_eles.map((p) => parseInt(p.style.zIndex))
+          );
+          const flyOutX = 1200;
+          const flyInX = -1200;
+          const topTransform =
+            this.transform_datas[this.transform_datas.length - 1];
+
+          // 1️⃣ 若这张牌是被选中的展示牌 → 进行交换动画
+          if (ele.isSelected) {
+            this.animateExchange(ele);
+            ele.style.boxShadow = "5px 5px 20px rgba(0, 0, 0, 0.5)"; // 阴影复原
+            return;
+          }
+
+          // 2️⃣ 顶层牌 → 发牌动画
+          if (parseInt(ele.style.zIndex) === maxZ && !this.selected) {
+            this.flyOutAndReplace(ele, topTransform, flyOutX, flyInX);
+            return;
+          }
+
+          // 3️⃣ 非顶层牌 → 提升到上方展示
+          if (!this.selected) {
+            ele.isSelected = true;
+            this.selected = ele;
+            ele.style.transition = "transform 0.6s ease";
+            ele.style.transform = "translateY(-300px) scale(1.1)";
+            ele.style.zIndex = 2000; // 提到最上层
+          }
+        },
+
+        // 顶层发牌逻辑
+        flyOutAndReplace(ele, topTransform, flyOutX, flyInX) {
+          ele.style.transition = "transform 0.2s ease";
+          ele.style.transform = topTransform + " translateX(0)";
+          setTimeout(() => {
+            ele.style.transition = "transform 0.6s ease";
+            ele.style.transform = topTransform + ` translateX(${flyOutX}px)`;
+          }, 150);
+
+          setTimeout(() => {
+            ele.querySelector("img").src = this.imgs[this.img_index].src;
+            this.img_index = (this.img_index + 1) % this.imgs.length;
+            ele.style.transition = "none";
+            ele.style.transform = topTransform + ` translateX(${flyInX}px)`;
+            void ele.offsetWidth;
+
+            this.poker_eles.unshift(this.poker_eles.pop());
+
+            this.poker_eles.forEach((p, i) => {
+              p.style.zIndex = i;
+              p.style.transition = "transform 0.6s ease";
+              p.style.transform = this.transform_datas[i];
+            });
+
+            setTimeout(() => {
+              ele.style.transition = "transform 0.6s ease";
+              ele.style.transform = this.transform_datas[0];
+            }, 50);
+          }, 800);
+        },
+
+        // ✨ 展示牌与堆顶牌交换动画
+        animateExchange(selected) {
+          selected.isSelected = false;
+          this.selected = null;
+
+          const topCard = this.poker_eles[this.poker_eles.length - 1];
+          const topIndex = this.poker_eles.indexOf(topCard);
+          const selIndex = this.poker_eles.indexOf(selected);
+
+          // 准备动画
+          selected.style.transition = "transform 0.8s ease";
+          topCard.style.transition = "transform 0.8s ease";
+
+          // ① 顶牌轻轻上抬并旋转
+          topCard.style.transform =
+            this.transform_datas[this.transform_datas.length - 1] +
+            " translateY(-150px) rotate(5deg)";
+
+          // ② 展示牌斜线飞回堆顶位置
+          selected.style.transform =
+            this.transform_datas[this.transform_datas.length - 1] +
+            " translate(-10px, -20px) rotate(-5deg)";
+
+          // ③ 稍后两者“交错回位”
+          setTimeout(() => {
+            topCard.style.transform =
+              this.transform_datas[topIndex - 1 >= 0 ? topIndex - 1 : 0];
+            selected.style.transform =
+              this.transform_datas[this.transform_datas.length - 1];
+          }, 500);
+
+          // ④ 动画结束后真正交换堆中位置
+          setTimeout(() => {
+            [this.poker_eles[topIndex], this.poker_eles[selIndex]] = [
+              this.poker_eles[selIndex],
+              this.poker_eles[topIndex],
+            ];
+
+            // 同步交换 imgs 数组的顺序
+            [this.imgs[topIndex], this.imgs[selIndex]] = [
+              this.imgs[selIndex],
+              this.imgs[topIndex],
+            ];
+
+            // 重新排列所有牌
+            this.poker_eles.forEach((p, i) => {
+              p.style.zIndex = i;
+              p.style.transition = "transform 0.6s ease";
+              p.style.transform = this.transform_datas[i];
+            });
+          }, 800);
+        },
+      };
+
+      poker.init();
+    </script>
+  </body>
+</html>
