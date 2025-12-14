@@ -7,3 +7,4 @@
 
 “扑克轮播”和“故障文字”来自BiliBili网站up主[JIEJOE_轻敲代码](https://space.bilibili.com/3546390319860710)。
 
+免责声明：我不会前端，大部分代码都是AI写的，其中Gemini3Pro占绝大多数；因此你可以拿着这份代码去问AI，请不要问我。
