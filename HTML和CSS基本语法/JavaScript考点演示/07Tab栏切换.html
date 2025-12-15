@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="UTF-8">
+    <title>Tab 切换</title>
+    <style>
+        .active {
+            color: red;
+        }
+
+        .content {
+            display: none;
+        }
+    </style>
+</head>
+
+<body>
+
+    <button class="tab">新闻</button>
+    <button class="tab">体育</button>
+
+    <div class="content">新闻内容</div>
+    <div class="content">体育内容</div>
+
+    <script>
+        var tabs = document.querySelectorAll(".tab");
+        var cons = document.querySelectorAll(".content");
+
+        tabs.forEach((tab, i) => {
+            tab.onclick = function () {
+                tabs.forEach(t => t.classList.remove("active"));// 移除所有 active 状态
+                cons.forEach(c => c.style.display = "none");// 隐藏所有 content
+
+                tab.classList.add("active");// 添加当前 tab 的 active 状态
+                cons[i].style.display = "block";
+            };
+        });
+    </script>
+
+</body>
+
+</html>

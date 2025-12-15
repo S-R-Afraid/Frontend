@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>CSS 盒子模型完整演示</title>
+    <style>
+        /* ============================
+           全局样式，便于观察布局
+        ============================ */
+        * {
+            box-sizing: content-box; /* 默认盒子模型（W3C 标准盒模型） */
+        }
+
+        body {
+            margin: 0;
+            padding: 20px;
+            font-family: Arial, "Microsoft YaHei", sans-serif;
+            background-color: #f5f5f5;
+        }
+
+        h1, h2 {
+            margin-bottom: 10px;
+        }
+
+        p {
+            margin: 6px 0;
+        }
+
+        /* ============================
+           外层容器，用来对比不同盒子
+        ============================ */
+        .container {
+            display: flex;                 /* 使用弹性布局并排显示 */
+            gap: 40px;                     /* 盒子之间的间距 */
+            margin-top: 20px;
+        }
+
+        /* ============================
+           公共盒子基础样式
+        ============================ */
+        .box {
+            width: 200px;                  /* 内容区（content）的宽度 */
+            height: 120px;                 /* 内容区（content）的高度 */
+            padding: 20px;                 /* 内边距（padding） */
+            border: 5px solid #333;        /* 边框（border） */
+            margin: 20px;                  /* 外边距（margin） */
+            background-color: #87ceeb;     /* 内容区 + padding 的背景色 */
+            color: #000;
+        }
+
+        /* ============================
+           标准盒模型（content-box）
+           实际占用空间 =
+           width + padding + border
+        ============================ */
+        .content-box {
+            box-sizing: content-box;       /* 默认值，可不写，这里是为了强调 */
+        }
+
+        /* ============================
+           怪异盒模型（border-box）
+           width 包含：content + padding + border
+        ============================ */
+        .border-box {
+            box-sizing: border-box;
+            background-color: #90ee90;
+        }
+
+        /* ============================
+           用于显示说明文字的区域
+        ============================ */
+        .info {
+            background-color: #fff;
+            padding: 15px;
+            border: 1px solid #ccc;
+            margin-top: 30px;
+            line-height: 1.6;
+        }
+
+        /* ============================
+           用于可视化 margin 的背景
+        ============================ */
+        .wrapper {
+            background-color: #ffe4e1;     /* 粉色区域用来表示 margin 占用空间 */
+            display: inline-block;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>CSS 盒子模型（Box Model）演示</h1>
+    <p>每一个 HTML 元素都可以看成一个盒子，由 <strong>content、padding、border、margin</strong> 组成。</p>
+
+    <div class="container">
+        <!-- ============================
+             标准盒模型演示
+        ============================ -->
+        <div class="wrapper">
+            <div class="box content-box">
+                <h2>content-box</h2>
+                <p>width = 200px</p>
+                <p>padding = 20px</p>
+                <p>border = 5px</p>
+            </div>
+        </div>
+
+        <!-- ============================
+             怪异盒模型演示
+        ============================ -->
+        <div class="wrapper">
+            <div class="box border-box">
+                <h2>border-box</h2>
+                <p>width = 200px</p>
+                <p>padding + border</p>
+                <p>都包含在 width 内</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============================
+         文字说明区域
+    ============================ -->
+    <div class="info">
+        <h2>盒子模型计算方式说明</h2>
+        <p><strong>一、标准盒模型（content-box）</strong></p>
+        <p>
+            实际占用宽度 = content（200） + 左右 padding（20 × 2） + 左右 border（5 × 2） = <strong>250px</strong>
+        </p>
+
+        <p><strong>二、怪异盒模型（border-box）</strong></p>
+        <p>
+            实际占用宽度 = width = <strong>200px</strong><br>
+            content 会被自动压缩，以保证 padding 和 border 不会撑大盒子。
+        </p>
+
+        <p><strong>三、margin 的特点</strong></p>
+        <p>
+            margin 不属于盒子本身，用于控制元素与元素之间的距离，
+            在本示例中通过粉色背景区域进行可视化展示。
+        </p>
+
+        <p><strong>四、实际开发建议</strong></p>
+        <ul>
+            <li>现代布局（尤其是响应式）推荐统一使用 <code>box-sizing: border-box;</code></li>
+            <li>可以通过 <code>* { box-sizing: border-box; }</code> 进行全局设置</li>
+        </ul>
+    </div>
+
+</body>
+</html>

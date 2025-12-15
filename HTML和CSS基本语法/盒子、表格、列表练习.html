@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<title>盒子练习</title>
+	<style>
+		#box {
+			width: 200px;
+			height: 200px;
+			background-color: #f00;
+        }
+        #son {
+            height: 33%;
+            background-color: #0f0;
+        }
+        #son2 {
+            height: 33%;
+            background-color: #00f;
+        }
+        table{
+            font-size: 14px;
+            border: 1px;
+        }
+        #table1{
+            border-collapse: collapse;/*边框合并*/
+        }
+        #table2{
+            border-spacing: 10px;/*边框间距*/
+            caption-side:bottom;/*设置标题位置*/
+        }
+        td{
+            width: 200px;
+            height: 50px;
+            border: 1px solid #0000ff;
+            margin: 0,auto;/*设置外边距上下0，左右auto*/
+            vertical-align: center;/*设置垂直对齐方式*/
+            text-align: center;/*设置水平对齐方式*/
+        }
+        caption{
+            font-size: 20px;
+            height: 100;/*设置高度*/
+            line-height: 40px;/*设置行高*/
+            text-align: center;/*设置文字居中*/
+        }
+        ul{
+            list-style-image: url(/HOT图片.png);
+            list-style-position: inside;/*设置列表项内容位置*/
+            font-size: 20px;
+        }
+	</style>
+</head>
+	<div id="box">
+        <div id="son">  </div>
+        <div id="son2">  </div>
+    </div>
+    <!--边框合并：border-collapse: collapse;-->
+    <table id="table1" >
+        <caption>边框合并</caption>
+        <tr>
+            <td></td>
+            <td>星期一</td><td>星期二</td><td>星期三</td><td>星期四</td><td>星期五</td>
+        </tr>
+        <tr>
+            <td>上午</td><td>语文</td><td>数学</td><td>英语</td><td>物理</td><td>化学</td>
+        </tr>
+        <tr>
+            <td>下午</td><td>语文</td><td>数学</td><td>英语</td><td>物理</td><td>化学</td>
+        </tr>
+    </table>
+    <br>
+    <!--边框分离：border-spacing: 10px;-->
+    <table id="table2">
+        <caption>边框分离</caption>
+        <tr>
+            <td></td>
+            <td>星期一</td><td>星期二</td><td>星期三</td><td>星期四</td><td>星期五</td>
+        </tr>
+        <tr>
+            <td rowspan="2">上午</td>
+            <td>语文</td><td>数学</td><td>英语</td><td>物理</td><td>化学</td>
+        </tr>
+        <tr>
+            <td>语文</td><td>数学</td><td>英语</td><td>物理</td><td>化学</td>
+        </tr>
+        <tr>
+            <td rowspan="2">下午</td>
+            <td>语文</td><td>数学</td><td>英语</td><td>物理</td><td>化学</td>
+        </tr>
+        <tr>
+            <td>语文</td><td>数学</td><td>英语</td><td>物理</td><td>化学</td>
+        </tr>
+    </table>
+        
+    <ul>    
+        ul列表项1
+        <li>列表项1.1</li>
+        <li>列表项1.2</li>
+        <li>列表项1.3</li>
+    </ul>
+</body>
+</html>

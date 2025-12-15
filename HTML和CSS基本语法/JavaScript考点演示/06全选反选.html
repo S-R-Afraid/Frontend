@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="UTF-8">
+    <title>全选反选</title>
+</head>
+
+<body>
+
+    <input type="checkbox" id="all">全选<input type="button" id="noall">反选<br>
+    <input type="checkbox" class="item">唱歌
+    <input type="checkbox" class="item">跳舞
+    <input type="checkbox" class="item">画画
+
+    <script>
+        var all = document.getElementById("all");
+        var items = document.querySelectorAll(".item");
+        var noall = document.getElementById("noall");
+        all.onclick = function () {
+            items.forEach(i => i.checked = this.checked);
+        };
+        noall.onclick = function () {
+            for (var i = 0; i < items.length; i++) {
+                if (items[i].checked) {
+                    all.checked = false;
+                }
+                items[i].checked = !items[i].checked;
+            };
+            //items.forEach(i => i.checked = !i.checked);
+            all.checked = [...items].every(i => i.checked);
+        };
+
+        items.forEach(i => {
+            i.onclick = function () {
+                all.checked = [...items].every(i => i.checked);
+            };
+        });
+    </script>
+
+</body>
+
+</html>

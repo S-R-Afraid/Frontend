@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+  <meta charset="UTF-8">
+  <title>Grid 网格布局演示</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: Arial;
+      padding: 20px;
+    }
+
+    h2 {
+      margin: 20px 0 10px;
+    }
+
+    .container {
+      border: 2px solid #333;
+      margin-bottom: 30px;
+      padding: 10px;
+    }
+
+    .item {
+      background-color: #2196f3;
+      color: white;
+      padding: 20px;
+      text-align: center;
+    }
+  </style>
+</head>
+
+<body>
+
+  <h1>Grid 网格布局演示</h1>
+
+  <!-- 1. 固定列 -->
+  <h2>1️⃣ 固定列网格</h2>
+  <div class="container" style="
+  display:grid;
+  grid-template-columns: 100px 100px 100px;
+  gap:10px;">
+    <div class="item">1</div>
+    <div class="item">2</div>
+    <div class="item">3</div>
+  </div>
+
+  <!-- 2. fr 单位 -->
+  <h2>2️⃣ fr 单位</h2>
+  <div class="container" style="
+  display:grid;
+  grid-template-columns: 1fr 2fr;
+  gap:10px;">
+    <div class="item">1fr</div>
+    <div class="item">2fr</div>
+  </div>
+
+  <!-- 3. repeat 九宫格 -->
+  <h2>3️⃣ 九宫格布局</h2>
+  <div class="container" style="
+  display:grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap:10px;">
+    <div class="item">1</div>
+    <div class="item">2</div>
+    <div class="item">3</div>
+    <div class="item">4</div>
+    <div class="item">5</div>
+    <div class="item">6</div>
+  </div>
+
+  <!-- 4. 跨行跨列 -->
+  <h2>4️⃣ 跨行跨列</h2>
+  <div class="container" style="
+  display:grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap:10px;">
+    <div class="item" style="grid-column:1/3;">横向跨两列</div>
+    <div class="item">2</div>
+    <div class="item">3</div>
+  </div>
+
+  <!-- 5. 页面结构布局 -->
+  <h2>5️⃣ 页面整体布局</h2>
+  <div class="container" style="
+  display:grid;
+  grid-template-columns: 200px 1fr;
+  grid-template-rows: 60px 200px 60px;
+  gap:10px;">
+    <div class="item" style="grid-column:1/3;">Header</div>
+    <div class="item">Nav</div>
+    <div class="item">Main</div>
+    <div class="item" style="grid-column:1/3;">Footer</div>
+  </div>
+
+</body>
+
+</html>

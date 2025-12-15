@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="UTF-8">
+    <title>表单验证</title>
+</head>
+
+<body>
+
+    <form id="form">
+        用户名：<input type="text" id="username">
+        <input type="submit" value="提交">
+    </form>
+
+    <script>
+        var form = document.getElementById("form");
+
+        form.onsubmit = function () {
+            var username = document.getElementById("username").value;
+            if (username === "") {
+                alert("用户名不能为空");
+                return false; // 阻止提交
+            }
+        };
+    </script>
+
+</body>
+
+</html>
+<!--
+1️⃣ 获取输入值
+username.value
+password.value
+
+2️⃣ 非空判断
+if (username.value === "") {
+  alert("用户名不能为空");
+  return false;
+}
+
+3️⃣ 表单提交事件
+form.onsubmit = function() {
+  return false; // 阻止提交
+};
+
+    表单重置事件
+form.onreset = function () {
+    console.log("表单被重置");
+};
+
+    input —— 内容变化
+input.oninput = function () {
+    console.log(this.value);
+};
+    change —— 内容改变并失焦后触发
+input.onchange = function () {
+    console.log("内容改变并失去焦点");
+};
+
+    keydown / keyup —— 键盘按下 / 松开
+input.onkeydown = function (e) {
+    console.log(e.key);
+};
+
+
+📌 典型考法
+
+✔ 用户名不能为空
+✔ 两次密码是否一致
+✔ 验证码是否输入
+-->

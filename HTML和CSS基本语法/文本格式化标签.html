@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+<html lang="CN">
+
+<head>
+    <!--meta标签用于描述网页的一些基本信息,如网页的关键字、作者、网页描述等-->
+    <meta charset="UTF-8" />
+    <!-- 网页的编码格式 -->
+    <meta name="viewport" content="width=device-wiwidthinitial-scale=1.0" />
+    <!-- 网页的视口，width表示宽度，initial-scale表示初始缩放比例，1.0表示默认值 -->
+    <title>文本格式化标签</title>
+    <!-- 网页的标题 -->
+    <style>
+        /*CSS样式有4种引用方法，内联样式、内部样式、外部样式、导入样式表，
+        此处使用内部样式，即在head标签中定义style标签，然后在style标签中定义CSS样式
+        内联样式：在标签中直接定义style属性，如<p style="color:red;">这段文字将显示红色</p>
+        外部样式：在head标签中定义link标签，如<link rel="stylesheet" type="text/css" href="mystyle.css">
+        导入样式表：在head标签中定义style标签，然后在style标签中使用@import导入样式表，如@import url("mystyle.css");
+        */
+
+        /*导入外部样式表*/
+        @import url("ss2.css");
+        /*更改标题样式*/
+
+        body {
+            font-family: "微软雅黑";
+            font-size: 16px;
+            line-height: 1.5;
+            background-color: #333;
+            color: #fff;
+        }
+
+        /*选择器，如大括号前面的a表示选择所有a标签
+        选择器区分大小写，但是声明不区分大小写。
+            此外，声明中的空格不会被处理，但是数字和单位之间不允许有空格(如16 px是错误的)*/
+
+        /*CSS选择器有五种，基本选择器、关系选择器、类选择器、伪类选择器、属性选择器
+
+        优先级：内联样式 > id选择器  > 类选择器（伪类选择器、属性选择器）> 标签选择器（伪元素选择器） > 通配符选择器
+        但是加有!important的声明优先级最高，将会覆盖其他样式。
+
+        基本选择器：通配符选择器、标签选择器、类选择器、ID选择器
+
+            通配符选择器：*，选择所有元素
+
+            标签选择器：如p，选择所有p标签
+
+            类选择器：.classname，选择所有class属性值为classname的元素
+
+            ID选择器：#idname，选择所有id属性值为idname的元素
+
+        关系选择器：后代选择器、子代选择器、标签指定式选择器、并集选择器
+        
+            后代选择器：后代元素，如ul li，选择ul元素下的所有li元素，
+                用于定义元素1里所有元素2的样式，语法为元素1 元素2{声明}
+
+            子代选择器：子代元素，如ul>li，选择ul元素下的所有直接子元素li，
+                子代选择器只能选择最近的一级子元素，不能选择子孙元素，语法为元素1 > 元素2{声明}
+                如#father>p{}表示选择id为father的元素下的所有直接子元素p
+
+            标签指定式选择器：标签选择器后加上类选择器或ID选择器，如p.classname，选择所有p标签的class属性值为classname的元素属性值，
+                如p#idname，选择所有p标签的id属性值为idname的元素属性值
+
+            并集选择器：多个选择器用逗号隔开，如ul,li{color:red;}，选择ul和li标签的颜色为红色
+
+            兄弟选择器：选择同属同一个父元素，且紧挨着的元素，语法为元素1+元素2{声明}
+                    如果想选则元素1后面的所有兄弟元素，则可以写成元素1~元素2{声明}
+            
+        伪类选择器：用于添加特殊效果，如a:hover表示鼠标悬停在a标签上时，a标签的样式发生变化
+            伪类选择器有以下几种：
+                a:link：未访问的链接
+                a:visited：已访问的链接
+                a:active：激活的链接（鼠标按下但未抬起）
+                a:hover：鼠标悬停在链接上
+        */
+        a {
+            color: rgb(89, 255, 0);
+            /*声明，声明由两部分组成，属性和值，中间用:隔开，多条声明之间用;隔开*/
+        }
+
+        a:hover {
+            text-decoration: none;
+            /*鼠标悬停时取消下划线*/
+        }
+
+        p:hover {
+            color: #ff0 !important;
+            /*鼠标悬停时文字颜色变为黄色*/
+
+            /*!important表示该声明的优先级最高，将会覆盖其他样式*/
+        }
+    </style>
+    <!--外部样式-->
+    <link rel="stylesheet" type="text/css" href="D:\盒子\HTML\HTML和CSS基本语法\ss1.css"><!--更改p标签的颜色-->
+</head>
+
+<body>
+
+    <a href="#ml" id="maodian">锚点位置,点击跳转锚点链接位置</a>
+    <strong>加粗</strong><!-- 强调语义 -->
+    <b>另一种加粗</b>
+    <em>斜体</em><!-- 强调语义 -->
+    <i>另一种斜体</i>
+    <u>HTML5不支持的下划线</u>
+    <ins>也是下划线</ins><!-- 强调语义 -->
+    <strike>删除线</strike>
+    <del>删除</del><!-- 强调语义 -->
+    <s>不推荐使用的删除线</s>
+    <code>计算机代码</code>
+    <pre>
+    保留
+        格式</pre>
+    <blockquote>引用</blockquote>
+    <q>短语引用</q>
+    <abbr title="缩写内容，鼠标悬停时显示完整内容">缩写(鼠标悬停于上方)</abbr>
+    <address>地址</address>
+    <cite>作品名称</cite>
+    <dfn>定义</dfn>
+    <ins>插入</ins>
+    <mark>标记</mark>
+    <small>小号字体</small>
+    <big>大号字体</big>
+    <font face="FZXS12" size="5" color="#00ffff">设置字体、大小、颜色</font>
+    <kbd>键盘输入</kbd>
+    <var>变量</var>
+    <samp>计算机输出</samp>
+    <!-- 行内元素和块级元素 ,span和div没有语义-->
+    <!--span用于对范围内文本进行格式化，例如需要对某一行文字中的个别文字进行加粗、斜体等-->
+    <span>行内元素</span>
+    <!--div用于划分页面上的区域，并对其进行格式化，例如可以将其设为背景色、边框、内边距等-->
+    <div>块级元素</div>
+    <sup>上标</sup>
+    <sub>下标</sub>
+    <h1>标题1</h1>
+    <h2>标题2</h2>
+    <h3>标题3</h3>
+    <h4>标题4</h4>
+    <h5>标题5</h5>
+    <h6>标题6</h6>
+    <p>段落</p>
+    <a id="ml" href="#maodian">跳转到锚点</a>
+    <hr />
+    <p>分割线</p>
+    <ul type="square">
+        <!--type属性为square表示方块，circle表示圆形，disc表示实心圆,none表示无符号-->
+        <li>无序列表项1</li>
+        <li>无序列表项2</li>
+        <li>无序列表项3</li>
+    </ul>
+    <ol type="A" start="3">
+        <!--type属性为A表示大写英文字母，a表示小写英文字母，1表示数字，i表示小写罗马数字，I表示大写罗马数字
+        start属性表示列表的起始序号-->
+        <li>有序列表项1</li>
+        <li>有序列表项2</li>
+        <li>有序列表项3</li>
+    </ol>
+    <dl>
+        <!--定义列表-->
+        <dt>定义标题1</dt>
+        <dd>定义内容1</dd>
+        <dt>定义标题2</dt>
+        <dd>定义内容2</dd>
+    </dl>
+    <a href="https://www.baidu.com">‫‫‫‫‫‫‫‫‫‫超链接</a>
+    <a href="https://www.baidu.com" target="_blank">新窗口打开超链接</a>
+    <a href="#">空链接</a>
+    <a href="mailto:<2184711240@qq.com>">发送邮件</a>
+    <a href="mailto:2184711240@qq.com?subject=这里是邮件标题&body=这里是邮件内容">发送带主题和内容的邮件</a>
+
+    <a href="tel:1234567890">拨打电话</a>
+    <img src="https://www.wenzhimo.xyz/wp-content/uploads/2024/10/2566B02C88E0D556AAD62E5F9B131F17.jpg"
+        alt="图片加载失败，请想象一个雨窗" title="雨窗" width="200" height="auto" hspace="100" vspace="100" align="center" />
+    <!-- alt属性为图片的文字说明,在图片无法显示时显示，title属性为图片的标题，在鼠标悬停时显示，width和height属性为图片的宽度和高度（一般用CSS设置） hspace和vspace属性为图片的水平和垂直间距，align属性为图片的对齐方式 -->
+    <audio src="https://www.wenzhimo.xyz/wp-content/uploads/2025/10/Mili-Chocological-Key-Ingredient-ver.flac"
+        controls="controls"> </audio>
+    <p>另两种插入多媒体的方式，不仅仅是音频，还可以是动画、图片。</p>
+    <embed src="https://www.wenzhimo.xyz/wp-content/uploads/2025/10/Mili-Chocological-Key-Ingredient-ver-flac-image.png"
+        width="300" height="300" />
+    <object data="https://www.wenzhimo.xyz/wp-content/uploads/2025/12/屏幕截图-2025-12-03-162804.png" type="image/png"
+        width="300" height="300"> </object>
+    <!--设置背景音乐，loop属性为-1表示循环播放，只适用IE浏览器-->
+    <bgsound src="https://www.wenzhimo.xyz/wp-content/uploads/2025/10/Mili-Chocological-Key-Ingredient-ver.flac"
+        loop="-1"></bgsound>
+    <br />换行
+    <hr />
+    <table border="2" width="500" height="200" align="center" style="border-collapse:collapse;">
+        <tr>
+            <th>姓名</th>
+            <th>数学</th>
+            <th>语文</th>
+            <th>总分</th>
+        </tr>
+        <tr>
+            <td>张三</td>
+            <td>90</td>
+            <td>80</td>
+            <td rowspan="2" align="center">345</td>
+        </tr>
+        <tr>
+            <td>李四</td>
+            <td>85</td>
+            <td>90</td>
+        </tr>
+        <!-- 合并单元格 -->
+        <tr>
+            <td colspan="4" align="left">制表日期 ：2025-10-10</td>
+        </tr>
+    </table>
+    <h2>表单</h2>
+    <form id="f1" action="#" width="500" height="600" align="center">
+        <!-- action属性为表单提交的地址url，method属性为提交方式
+         action只能填网址，不能填JavaScript-->
+        <label for="name">姓名：</label>
+        <!-- for属性为label标签的for属性，用于绑定input标签，当点击label标签时，光标聚焦到对应的input标签上-->
+        <input type="text" id="name" name="name" placeholder="默认占位文字" required /><br />
+        <label>性别:</label>
+        <input type="radio" id="male" name="gender" value="male" checked>
+        <label for="male">男</label>
+        <input type="radio" id="female" name="gender" value="female">
+        <label for="female">女</label><br />
+        <label for="career">职业：</label>
+        <select id="career" name="career">
+            <option value="">--请选择--</option>
+            <option value="teacher">教师</option>
+            <option value="doctor">学生</option>
+            <option value="engineer">工程师</option>
+        </select><br />
+        <label>喜好：</label>
+
+        <input type="checkbox" id="sport" name="faverite" value="sport" required>
+        <label for="sport">体育</label>
+
+        <input type="checkbox" id="reading" name="faverite" value="reading">
+        <label for="reading">阅读</label>
+
+        <input type="checkbox" id="music" name="faverite" value="music">
+        <label for="music">音乐</label>
+        <br>
+        <label for="password">密码：</label>
+        <input type="password" id="password" name="password" required /><br />
+        <label for="message">留言：</label>
+        <textarea id="message" name="message" required>默认内容</textarea><br />
+        <input type="submit" value="提交" />
+    </form>
+
+    <script>
+        // 1. 获取表单
+        var form = document.getElementById("f1");
+
+        // 2. 监听提交事件
+        form.onsubmit = function (e) {
+            e.preventDefault(); // 阻止表单默认提交
+
+            // 3. 读取文本框
+            var name = document.getElementById("name").value;
+
+            // 4. 读取单选框（性别）
+            var gender = document.querySelector("input[name='gender']:checked").value;
+
+            // 5. 读取下拉框
+            var career = document.getElementById("career").value;
+
+            // 6. 读取多选框（喜好）
+            var favorites = [];
+            var checks = document.querySelectorAll("input[name='faverite']:checked");
+            checks.forEach(function (item) {
+                favorites.push(item.value);
+            });
+
+            // 7. 读取密码
+            var password = document.getElementById("password").value;
+
+            // 8. 读取 textarea
+            var message = document.getElementById("message").value;
+
+            // 9. 显示结果
+            alert(
+                "姓名：" + name + "\n" +
+                "性别：" + gender + "\n" +
+                "职业：" + career + "\n" +
+                "喜好：" + favorites.join("、") + "\n" +
+                "密码：" + password + "\n" +
+                "留言：" + message
+            );
+        };
+    </script>
+
+
+
+    <h2>表单&表格混合</h2>
+    <form align="center">
+        <table border="0" width="500" height="200" align="left">
+            <tr>
+                <th><label for="name">姓名:</label></th>
+                <td><input type="text" id="name" name="name" required /></td>
+            </tr>
+            <tr>
+                <th><label>性别:</label></th>
+                <td><input type="radio" id="male" name="gender" value="male" checked>男<input type="radio" id="female"
+                        name="gender" value="female">女</td>
+            </tr>
+            <tr>
+                <th><label for="career" required>职业:</label></th>
+                <td>
+                    <select id="career" name="career">
+                        <option value="">--请选择--</option>
+                        <option value="teacher">教师</option>
+                        <option value="doctor">学生</option>
+                        <option value="engineer">工程师</option>
+                    </select>
+                </td>
+            </tr>
+            <tr>
+                <th><label for="faverite" required>喜好:</label></th>
+                <td><input type="checkbox" id="sport" name="faverite" value="sport">体育<input type="checkbox"
+                        id="reading" name="faverite" value="reading">阅读<input type="checkbox" id="music" name="faverite"
+                        value="music">音乐</td>
+            <tr>
+                <th><label for="password" required>密码:</label></th>
+                <td><input type="password" id="password" name="password" required /></td>
+            </tr>
+            <tr>
+                <th><label for="message" required>留言:</label></th>
+                <td><textarea id="message" name="message" required></textarea></td>
+            </tr>
+            <tr>
+                <td align="center"><input type="reset" value="重置" /></td>
+                <td align="left"><input type="submit" value="提交" /></td>
+            </tr>
+        </table>
+    </form>
+
+    <iframe src="https://www.wenzhimo.xyz" width="800" height="500" frameborder="10" scrolling="auto"></iframe>
+    <nav>
+        <ul>
+            <li>qqq</li>
+            <li>qqq</li>
+            <li>qqq</li>
+            <li>qqq</li>
+        </ul>
+    </nav>
+    <br />
+    <br />
+    <br />
+    <br />
+</body>
+
+</html>

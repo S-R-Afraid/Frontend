@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <title>获取页面元素</title>
+</head>
+
+<body>
+
+    <h2 id="title">标题</h2>
+    <button id="btn">点击我</button>
+
+    <script>
+        var title = document.getElementById("title");
+        var btn = document.querySelector("#btn");
+
+        btn.onclick = function () {
+            if (title.innerText === "标题") {
+                title.innerText = "标题被修改了";
+            } else {
+                title.innerText = "标题";
+            }
+        };
+    </script>
+
+</body>
+
+</html>
+<!--
+1️⃣ 最常考（首选）
+document.getElementById("id")
+
+2️⃣ 批量获取（常配合循环），返回HTMLCollection集合
+document.getElementsByClassName("box")
+document.getElementsByTagName("input")
+
+
+👉 返回 HTMLCollection（类数组）
+
+3️⃣ 新标准（推荐）类似CSS选择器
+document.querySelector(".box")
+document.querySelectorAll(".box")
+
+
+👉 querySelectorAll 返回 NodeList
+
+📌 考试速记
+方法	                        返回
+getElementById	            单个元素
+getElementsByClassName	    类集合
+querySelector	            第一个
+querySelectorAll	        类集合
+-->

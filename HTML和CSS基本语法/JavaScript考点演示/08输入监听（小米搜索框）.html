@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="UTF-8">
+    <title>搜索框</title>
+</head>
+
+<body>
+
+    <input type="text" id="search" placeholder="输入内容">
+
+    <script>
+        var input = document.getElementById("search");
+
+        input.addEventListener("input", function () {
+            console.log(this.value);
+        });
+    </script>
+
+</body>
+
+</html>

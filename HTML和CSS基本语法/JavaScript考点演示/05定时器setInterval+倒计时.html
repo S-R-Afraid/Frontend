@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="UTF-8">
+    <title>倒计时</title>
+</head>
+
+<body>
+
+    <p id="num">20</p>
+
+    <script>
+        var n = 20;
+        var timer = setInterval(function () {
+            n--;
+            document.getElementById("num").innerText = n;
+            if (n === 0) {
+                clearInterval(timer);
+            }
+        }, 1000);
+    </script>
+
+</body>
+
+</html>
