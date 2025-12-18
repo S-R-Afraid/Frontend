@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Symmetric Grid (Configurable Size)</title>
+    <style>
+        html,
+        body {
+            margin: 0;
+            background: #121212;
+            overflow: hidden;
+        }
+
+        canvas {
+            display: block;
+        }
+    </style>
+</head>
+
+<body>
+
+    <canvas id="canvas"></canvas>
+
+    <script>
+        /* ======================
+           参数（只改这里）
+        ====================== */
+
+        const P = {
+            tiles: 5,
+            padding: 0.2,
+
+            gridSize: 8,   // ← 最终可见网格边长（必须是偶数）
+
+            edgesMax: 15,
+            edgesAttempts: 20,
+            edgesBreak: 4,
+            startPoint: [1, 1],
+        }
+
+        /* ======================
+           推导关系（核心）
+        ====================== */
+
+        P.innerGrid = P.gridSize / 2
+
+        /* ======================
+           Canvas
+        ====================== */
+
+        const canvas = document.getElementById('canvas')
+        const ctx = canvas.getContext('2d')
+
+        function resize() {
+            canvas.width = window.innerWidth
+            canvas.height = window.innerHeight
+        }
+        window.addEventListener('resize', resize)
+        resize()
+
+        /* ======================
+           工具
+        ====================== */
+
+        function rand(arr) {
+            return arr[Math.floor(Math.random() * arr.length)]
+        }
+
+        /* ======================
+           路径生成（原逻辑）
+        ====================== */
+
+        const dirs = [[1, 0], [0, 1], [-1, 0], [0, -1]]
+
+        function getPoints() {
+            let [x, y] = P.startPoint
+            const points = [[x, y]]
+            const edges = {}
+
+            const getEdges = (x, y) => {
+                const k = `${x}-${y}`
+                if (!edges[k]) edges[k] = []
+                return edges[k]
+            }
+
+            let i = 0
+            let count = 0
+
+            while (i < P.edgesAttempts && count < P.edgesMax) {
+                const visited = getEdges(x, y)
+
+                const opts = dirs.filter(([dx, dy]) => {
+                    const nx = x + dx
+                    const ny = y + dy
+                    if (nx < 0 || nx > P.innerGrid) return false
+                    if (ny < 0 || ny > P.innerGrid) return false
+                    if (visited.find(p => p[0] === nx && p[1] === ny)) return false
+                    return true
+                })
+
+                if (!opts.length) break
+
+                const [dx, dy] = rand(opts)
+                const px = x, py = y
+                x += dx; y += dy
+
+                visited.push([x, y])
+                getEdges(x, y).push([px, py])
+
+                points.push([x, y])
+                count++; i++
+            }
+
+            return points
+        }
+
+        /* ======================
+           对称绘制（保持原版）
+        ====================== */
+
+        function drawQuadrant(points, size) {
+            const step = size / P.innerGrid
+            ctx.beginPath()
+            for (let i = 1; i < points.length; i++) {
+                const a = points[i - 1]
+                const b = points[i]
+                ctx.moveTo(a[0] * step, a[1] * step)
+                ctx.lineTo(b[0] * step, b[1] * step)
+            }
+            ctx.stroke()
+        }
+
+        function drawSymmetric(points, size) {
+            const half = size / 2
+
+            ctx.save()
+            ctx.translate(half, half)
+
+            ctx.scale(1, -1)
+            drawQuadrant(points, half)
+            ctx.scale(1, -1)
+            drawQuadrant(points, half)
+            ctx.scale(-1, 1)
+            drawQuadrant(points, half)
+            ctx.scale(1, -1)
+            drawQuadrant(points, half)
+
+            ctx.restore()
+        }
+
+        /* ======================
+           主流程
+        ====================== */
+
+        let data = []
+
+        function regenerate() {
+            data = []
+            for (let i = 0; i < P.tiles * P.tiles; i++) {
+                data.push(getPoints())
+            }
+            draw()
+        }
+
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height)
+            ctx.strokeStyle = '#fff'
+            ctx.lineWidth = 3
+
+            const m = Math.min(canvas.width, canvas.height) * 0.85
+            const blockStep = m / P.tiles
+            const padding = blockStep * P.padding
+            const blockSize = blockStep - padding * 2
+
+            ctx.save()
+            ctx.translate((canvas.width - m) / 2, (canvas.height - m) / 2)
+
+            data.forEach((points, i) => {
+                const x = i % P.tiles
+                const y = Math.floor(i / P.tiles)
+
+                ctx.save()
+                ctx.translate(
+                    x * blockStep + padding,
+                    y * blockStep + padding
+                )
+                drawSymmetric(points, blockSize)
+                ctx.restore()
+            })
+
+            ctx.restore()
+        }
+
+        /* ======================
+           启动
+        ====================== */
+
+        regenerate()
+    </script>
+
+</body>
+
+</html>
