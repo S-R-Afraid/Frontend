@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>自动飞来动画</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+        }
+
+        article {
+            margin-bottom: 40px;
+        }
+
+        /* 文字初始透明，并从左侧飞入 */
+        .lazy-load {
+            opacity: 0;
+            transform: translateX(-100px);
+            /* 初始状态从左边飞入 */
+            transition: opacity 0.6s ease, transform 0.3s ease;
+        }
+
+        /* 加载后，文字恢复正常 */
+        .lazy-load.loaded {
+            opacity: 1;
+            transform: translateX(0);
+        }
+    </style>
+</head>
+
+<body>
+
+    <article>
+        <h1>文章标题 1</h1>
+        <p>这是第一篇文章的内容。文字将从左边飞入。</p>
+        <p>更多的内容...</p>
+        <p>更多的内容...</p>
+        <p>更多的内容...</p>
+        <p>更多的内容...</p>
+        <p>更多的内容...</p>
+        <p>更多的内容...</p>
+        <p>更多的内容...</p>
+        <p>更多的内容...</p>
+        <p>更多的内容...</p>
+        <p>更多的内容...</p>
+        <p>更多的内容...</p>
+        <p>更多的内容...</p>
+        <p>更多的内容...</p>
+        <p>更多的内容...</p>
+        <p>更多的内容...</p>
+        <p>更多的内容...</p>
+        <p>更多的内容...</p>
+        <p>更多的内容...</p>
+        <p>更多的内容...</p>
+        <p>更多的内容...</p>
+        <p>更多的内容...</p>
+        <p>更多的内容...</p>
+        <p>更多的内容...</p>
+        <p>更多的内容...</p>
+        <p>更多的内容...</p>
+        <p>更多的内容...</p>
+        <p>更多的内容...</p>
+        <p>更多的内容...</p>
+        <p>更多的内容...</p>
+        <p>更多的内容...</p>
+        <p>更多的内容...</p>
+        <p>更多的内容...</p>
+        <p>更多的内容...</p>
+        <p>更多的内容...</p>
+        <p>更多的内容...</p>
+        <p>更多的内容...</p>
+        <p>更多的内容...</p>
+        <p>更多的内容...</p>
+        <p>更多的内容...</p>
+
+    </article>
+
+    <article>
+        <h1>文章标题 2</h1>
+        <p>这是第二篇文章的内容。文字将从左边飞入。</p>
+        <p>更多的内容...</p>
+        <p>更多的内容...</p>
+        <p>更多的内容...</p>
+        <p>更多的内容...</p>
+        <p>更多的内容...</p>
+        <p>更多的内容...</p>
+        <p>更多的内容...</p>
+        <p>更多的内容...</p>
+        <p>更多的内容...</p>
+        <p>更多的内容...</p>
+        <p>更多的内容...</p>
+        <p>更多的内容...</p>
+        <p>更多的内容...</p>
+        <p>更多的内容...</p>
+        <p>更多的内容...</p>
+        <p>更多的内容...</p>
+        <p>更多的内容...</p>
+        <p>更多的内容...</p>
+        <p>更多的内容...</p>
+        <p>更多的内容...</p>
+        <p>更多的内容...</p>
+        <p>更多的内容...</p>
+        <p>更多的内容...</p>
+        <p>更多的内容...</p>
+        <p>更多的内容...</p>
+        <p>更多的内容...</p>
+        <p>更多的内容...</p>
+        <p>更多的内容...</p>
+        <p>更多的内容...</p>
+        <p>更多的内容...</p>
+        <p>更多的内容...</p>
+        <p>更多的内容...</p>
+        <p>更多的内容...</p>
+        <p>更多的内容...</p>
+        <p>更多的内容...</p>
+        <p>更多的内容...</p>
+        <p>更多的内容...</p>
+        <p>更多的内容...</p>
+        <p>更多的内容...</p>
+        <p>更多的内容...</p>
+    </article>
+
+    <article>
+        <h1>文章标题 3</h1>
+        <p>这是第三篇文章的内容。文字将从左边飞入。</p>
+        <p>更多的内容...</p>
+    </article>
+
+    <script>
+        document.addEventListener("DOMContentLoaded", () => {
+            // 获取所有 article 元素
+            const articles = document.querySelectorAll('article');
+
+            // 遍历每个 article 标签
+            articles.forEach(article => {
+                // 获取 article 中的所有子元素（例如 h1, h2, p 等）
+                const contentElements = article.querySelectorAll('h1, h2, p, li');
+
+                // 为每个子元素添加 lazy-load 类
+                contentElements.forEach(element => {
+                    element.classList.add('lazy-load');
+                });
+            });
+
+            // 创建一个 IntersectionObserver 实例
+            const observer = new IntersectionObserver((entries, observer) => {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting) {
+                        const element = entry.target;
+                        element.classList.add('loaded'); // 添加 'loaded' 类触发动画
+                        observer.unobserve(element); // 停止观察该元素
+                    }
+                });
+            }, {
+                threshold: 0.2 // 当 20% 的元素进入视口时触发
+            });
+
+            // 获取所有带有 lazy-load 类的元素
+            const lazyElements = document.querySelectorAll('.lazy-load');
+
+            // 开始观察每个元素
+            lazyElements.forEach(element => {
+                observer.observe(element);
+            });
+        });
+    </script>
+
+</body>
+
+</html>
