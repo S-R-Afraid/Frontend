@@ -1,7 +1,7 @@
 # Frontend
 前端合集。
 
-大部分内容可在[我的博客](https://www.wenzhimo.xyz/)里查看效果。
+大部分内容可在[我的博客](https://www.wenzhimo.xyz/category/article/programing/html-css3/))里查看效果。
 
 如果您为了寻找一些前端的效果而来，也请看看[前端小小项目](https://github.com/Silvana-kite/html-css-js-project)和[前端特效存档](https://github.com/yangxi0126/javaScript)。
 
