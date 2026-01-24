@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Minimal Vector Scope</title>
+    <style>
+        body {
+            margin: 0;
+            background: #000;
+            overflow: hidden;
+            font-family: sans-serif;
+        }
+
+        /* 全屏容器 */
+        #scope-canvas {
+            display: block;
+            width: 100vw;
+            height: 100vh;
+            cursor: pointer;
+            /* 提示可点击 */
+        }
+
+        /* 自定义样式的上传按钮 (悬浮在右上角) */
+        #my-upload-btn {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            padding: 10px 20px;
+            background: rgba(0, 50, 0, 0.6);
+            border: 1px solid #0f0;
+            color: #0f0;
+            cursor: pointer;
+            border-radius: 4px;
+            font-size: 14px;
+            z-index: 10;
+            transition: all 0.3s;
+        }
+
+        #my-upload-btn:hover {
+            background: #0f0;
+            color: #000;
+        }
+
+        /* 提示文字 */
+        .hint {
+            position: absolute;
+            bottom: 20px;
+            width: 100%;
+            text-align: center;
+            color: rgba(0, 255, 0, 0.3);
+            pointer-events: none;
+            font-size: 12px;
+        }
+    </style>
+</head>
+
+<body>
+
+    <!-- 画布 -->
+    <canvas id="scope-canvas"></canvas>
+
+    <!-- 用户自定义的按钮，ID 将被绑定到 JS 配置中 -->
+    <button id="my-upload-btn">Upload Local File</button>
+
+    <div class="hint">CLICK SCREEN TO PLAY / PAUSE</div>
+
+    <!-- 引入逻辑 -->
+    <script src="vector-scopeV3.js"></script>
+
+    <script>
+        // 实例化：所有参数在此处一次性配置
+        const scope = new VectorScope('scope-canvas', {
+            // 音频设置
+            // 你可以填入一个支持跨域的 URL，或者留空等待上传
+            audioUrl: 'https://www.wenzhimo.xyz/wp-content/uploads/2026/01/Primer%20Final.flac',
+
+            // 绑定上传按钮的 ID
+            uploadButtonId: 'my-upload-btn',
+
+            // 视觉设置 (手动调整这里的值来放大缩小)
+            zoom: 1.2,           // 1.0 是标准大小，1.5 放大，0.5 缩小
+            intensity: 10,       // 亮度增强
+            jumpThreshold: 50,  // 断线判定距离
+
+            // 颜色设置
+            lineColor: '0, 255, 100', // 青绿色
+            bgColor: '#050505'
+        });
+
+        console.log("Vector Scope Initialized. Click screen to start.");
+    </script>
+
+</body>
+
+</html>

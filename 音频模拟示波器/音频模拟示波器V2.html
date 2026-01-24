@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Web Vector Scope</title>
+    <style>
+        body {
+            margin: 0;
+            background-color: #111;
+            color: #ccc;
+            font-family: sans-serif;
+            overflow: hidden;
+        }
+
+        .app-container {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+        }
+
+        /* 1. 画布铺满 */
+        #scope-canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+            background: #000;
+        }
+
+        /* 2. 控制面板样式 */
+        .controls {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            width: 280px;
+            background: rgba(20, 20, 20, 0.9);
+            padding: 20px;
+            border: 1px solid #444;
+            border-radius: 8px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.5);
+        }
+
+        .control-group {
+            margin-bottom: 12px;
+        }
+
+        label {
+            display: flex;
+            justify-content: space-between;
+            font-size: 12px;
+            color: #888;
+            margin-bottom: 4px;
+        }
+
+        input[type="range"] {
+            width: 100%;
+            accent-color: #0f0;
+            cursor: pointer;
+        }
+
+        input[type="file"] {
+            width: 100%;
+            font-size: 11px;
+            color: #888;
+        }
+
+        audio {
+            width: 100%;
+            height: 30px;
+            margin-top: 5px;
+        }
+
+        h2 {
+            margin: 0 0 15px 0;
+            color: #0f0;
+            font-size: 16px;
+            letter-spacing: 1px;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="app-container">
+        <canvas id="scope-canvas"></canvas>
+
+        <div class="controls">
+            <h2>Vector Scope</h2>
+
+            <div class="control-group">
+                <input type="file" id="input-file" accept="audio/*">
+                <audio id="player" controls crossorigin="anonymous"></audio>
+            </div>
+
+            <div class="control-group">
+                <label><span>缩放 (Zoom)</span> <span id="txt-zoom">1.0x</span></label>
+                <input type="range" id="input-zoom" min="0.5" max="3.0" step="0.1" value="1.0">
+            </div>
+
+            <div class="control-group">
+                <label><span>亮度 (Intensity)</span> <span id="txt-int">30</span></label>
+                <input type="range" id="input-int" min="10" max="100" value="30">
+            </div>
+
+            <div class="control-group">
+                <label><span>断线阈值 (Jump)</span> <span id="txt-jump">100px</span></label>
+                <input type="range" id="input-jump" min="10" max="300" value="100">
+            </div>
+        </div>
+    </div>
+
+    <!-- 引入类库 -->
+    <script src="vector-scopeV2.js"></script>
+
+    <!-- 页面逻辑：仅包含初始化和绑定 -->
+    <script>
+        // 1. 初始化实例
+        // 我们可以直接传入 canvas 的 ID
+        const scope = new VectorScope('scope-canvas', {
+            zoom: 1.0,
+            intensity: 30,
+            jumpThreshold: 100,
+            lineColor: '0, 255, 0' // 绿色
+        });
+
+        // 2. 获取 UI 元素
+        const player = document.getElementById('player');
+        const inputFile = document.getElementById('input-file');
+        const zoomCtrl = document.getElementById('input-zoom');
+        const intCtrl = document.getElementById('input-int');
+        const jumpCtrl = document.getElementById('input-jump');
+
+        // 3. 核心：将 Audio 元素绑定到示波器
+        scope.connectAudio(player);
+
+        // 4. 事件绑定：文件上传
+        inputFile.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (file) {
+                player.src = URL.createObjectURL(file);
+                player.play();
+            }
+        });
+
+        // 5. 事件绑定：参数调节
+        // 使用简单的辅助函数来绑定 Input -> Scope -> Text
+        function bindControl(input, textDisplay, setterMethod, unit = '') {
+            input.addEventListener('input', (e) => {
+                const val = e.target.value;
+                // 调用实例方法 (例如 scope.setZoom(1.5))
+                scope[setterMethod](val);
+                // 更新 UI 文本
+                if (textDisplay) document.getElementById(textDisplay).innerText = val + unit;
+            });
+        }
+
+        bindControl(zoomCtrl, 'txt-zoom', 'setZoom', 'x');
+        bindControl(intCtrl, 'txt-int', 'setIntensity');
+        bindControl(jumpCtrl, 'txt-jump', 'setJumpLimit', 'px');
+
+    </script>
+</body>
+
+</html>
