@@ -172,7 +172,7 @@ FootnotePreview.js:
         // 实例 1: 作用于 'section-a'，识别 'sup-style-a' 类，内容在 'footer-a'
         const articleFootnotes = new FootnotePreview('section-a', 'sup-style-a', 'footer-a');
 
-        // 实例 2: 作用于 'section-b'，识别 'sup-style-a' 类，内容在 'footer-b'
+        // 实例 2: 作用于 'section-b'，识别 'sup-style-b' 类，内容在 'footer-b'
         const sidebarFootnotes = new FootnotePreview('section-b', 'sup-style-b', 'footer-b');
     </script>
 ```
