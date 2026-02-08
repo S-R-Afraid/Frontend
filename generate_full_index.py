@@ -6,17 +6,17 @@ import datetime
 # 你的 GitHub Pages 基础 URL
 BASE_URL = "https://s-r-afraid.github.io/Frontend/"
 
-# 生成的文件名
-OUTPUT_FILENAME = "file-index.html"
+# 输出文件名
+OUTPUT_FILENAME = "file-index.html"  # 建议直接命名为 index.html 作为主页
 
 # 忽略配置
 EXCLUDED_DIRS = {'.git', '.github', '.vscode', 'node_modules', '__pycache__', 'dist', 'venv'}
-EXCLUDED_FILES = {'generate_full_index.py', OUTPUT_FILENAME, '.DS_Store', 'CNAME', '.gitignore', 'package-lock.json'}
+EXCLUDED_FILES = {'generate_full_index.py', OUTPUT_FILENAME, '.DS_Store', 'CNAME', '.gitignore', 'package-lock.json', 'README.md'}
 # ===========================================
 
 def get_web_url(relative_path):
     """生成带前缀的完整 URL"""
-    path = relative_path.replace(os.sep, '/') # 替换 Windows 反斜杠
+    path = relative_path.replace(os.sep, '/')
     if path.startswith('./'):
         path = path[2:]
     safe_path = urllib.parse.quote(path)
@@ -33,7 +33,6 @@ def generate_tree_html(current_dir):
     files = []
 
     for item in items:
-        # 过滤忽略项
         if item.startswith('.') or item in EXCLUDED_FILES or item in EXCLUDED_DIRS:
             continue
             
@@ -51,53 +50,56 @@ def generate_tree_html(current_dir):
 
     html = '<ul class="tree-list">\n'
 
-    # 1. 先处理文件夹 (支持折叠)
+    # 1. 文件夹
     for d in dirs:
         sub_path = os.path.join(current_dir, d)
         sub_html = generate_tree_html(sub_path)
         
         if sub_html:
+            # 默认 open 展开，如果想折叠请删除 open
             html += f'''
             <li class="folder-item">
-                <details> <!-- 默认展开，如果想默认折叠，去掉 open 属性 -->
-                    <summary class="folder-name">📂 {d}</summary>
+                <details> 
+                    <summary class="folder-name"><span class="icon">📂</span>{d}</summary>
                     {sub_html}
                 </details>
             </li>
             '''
         else:
-            html += f'<li class="folder-item empty">📂 {d} (空)</li>'
+            html += f'<li class="folder-item empty"><span class="icon">📂</span>{d} (空)</li>'
 
-    # 2. 处理文件
+    # 2. 文件
     for f in files:
         rel_path = os.path.join(current_dir, f)
         url = get_web_url(rel_path)
-        html += f'<li class="file-item">📄 <a href="{url}" target="_blank">{f}</a></li>\n'
+        html += f'<li class="file-item"><span class="icon">📄</span><a href="{url}" target="_blank">{f}</a></li>\n'
 
     html += '</ul>'
     return html
 
 def main():
-    print("正在生成 HTML 目录树...")
+    print("正在生成暗黑模式 HTML 目录树...")
     
     tree_content = generate_tree_html(".")
     
-    # 完整的 HTML 模板，包含 CSS 美化
+    # 暗黑模式 CSS 样式
     full_html = f"""
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Frontend Project Index</title>
+    <title>Frontend Index</title>
     <style>
         :root {{
-            --bg-color: #f6f8fa;
-            --card-bg: #ffffff;
-            --text-color: #24292e;
-            --link-color: #0366d6;
-            --hover-color: #f1f8ff;
-            --border-color: #e1e4e8;
+            --bg-color: #0d1117;       /* GitHub Dark 背景 */
+            --card-bg: #161b22;        /* 卡片深色背景 */
+            --text-color: #c9d1d9;     /* 浅灰文字 */
+            --link-color: #58a6ff;     /* 蓝色链接 */
+            --link-hover: #79c0ff;     /* 悬停亮蓝 */
+            --border-color: #30363d;   /* 边框颜色 */
+            --hover-bg: #21262d;       /* 鼠标悬停背景 */
+            --icon-color: #8b949e;     /* 图标颜色 */
         }}
         
         body {{
@@ -106,6 +108,7 @@ def main():
             color: var(--text-color);
             margin: 0;
             padding: 20px;
+            line-height: 1.5;
         }}
 
         .container {{
@@ -113,63 +116,78 @@ def main():
             margin: 0 auto;
             background: var(--card-bg);
             padding: 40px;
-            border-radius: 8px;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            border-radius: 6px;
             border: 1px solid var(--border-color);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.5);
         }}
 
         h1 {{
             border-bottom: 1px solid var(--border-color);
-            padding-bottom: 20px;
+            padding-bottom: 15px;
             margin-bottom: 20px;
             font-size: 24px;
+            color: #f0f6fc;
         }}
         
         .meta-info {{
-            font-size: 14px;
-            color: #6a737d;
-            margin-bottom: 30px;
+            font-size: 13px;
+            color: var(--icon-color);
+            margin-bottom: 25px;
+            background: rgba(56, 139, 253, 0.1);
+            padding: 10px;
+            border-radius: 6px;
+            border: 1px solid rgba(56, 139, 253, 0.4);
         }}
 
-        /* 树状结构样式 */
+        .meta-info a {{
+            color: var(--text-color);
+            text-decoration: underline;
+        }}
+
+        /* 树状列表样式 */
         ul.tree-list {{
             list-style-type: none;
-            padding-left: 20px;
+            padding-left: 18px;
             margin: 0;
+            border-left: 1px solid var(--border-color); /* 添加竖线指引 */
         }}
         
-        /* 根节点的 ul 不需要缩进太深 */
+        /* 顶层不需要左边框 */
         .container > ul.tree-list {{
             padding-left: 0;
+            border-left: none;
         }}
 
         li {{
-            margin: 5px 0;
-            line-height: 1.6;
+            margin: 2px 0;
         }}
 
-        /* 文件夹摘要样式 */
+        .icon {{
+            margin-right: 8px;
+            opacity: 0.8;
+        }}
+
+        /* 文件夹摘要 */
         details > summary {{
             cursor: pointer;
-            font-weight: 600;
-            padding: 4px 8px;
-            border-radius: 4px;
-            list-style: none; /* 隐藏默认三角，部分浏览器需要 */
-            user-select: none;
+            padding: 6px 10px;
+            border-radius: 6px;
+            list-style: none; 
+            transition: background 0.2s;
+            display: flex;
+            align-items: center;
         }}
         
-        /* 自定义三角箭头 */
-        details > summary::-webkit-details-marker {{
-            display: none;
-        }}
+        details > summary::-webkit-details-marker {{ display: none; }}
         
+        /* 自定义箭头 */
         details > summary::before {{
             content: "▶";
             font-size: 10px;
             display: inline-block;
-            margin-right: 6px;
+            margin-right: 8px;
+            color: var(--icon-color);
             transition: transform 0.2s;
-            color: #6a737d;
         }}
 
         details[open] > summary::before {{
@@ -177,31 +195,34 @@ def main():
         }}
 
         details > summary:hover {{
-            background-color: var(--hover-color);
+            background-color: var(--hover-bg);
+            color: #f0f6fc;
         }}
 
-        /* 文件链接样式 */
+        /* 文件链接 */
         .file-item {{
-            padding-left: 24px; /* 对齐文件夹内容 */
+            padding-left: 28px; /* 对齐 */
+            padding-top: 4px;
+            padding-bottom: 4px;
         }}
 
         a {{
             text-decoration: none;
             color: var(--link-color);
-            transition: 0.2s;
+            transition: color 0.2s;
         }}
 
         a:hover {{
+            color: var(--link-hover);
             text-decoration: underline;
-            color: #005cc5;
         }}
         
         footer {{
             margin-top: 40px;
             text-align: center;
             font-size: 12px;
-            color: #999;
-            border-top: 1px solid #eee;
+            color: var(--icon-color);
+            border-top: 1px solid var(--border-color);
             padding-top: 20px;
         }}
     </style>
@@ -210,16 +231,14 @@ def main():
     <div class="container">
         <h1>🗂️ Frontend Project Index</h1>
         <div class="meta-info">
-            Base URL: <a href="{BASE_URL}" target="_blank">{BASE_URL}</a> <br>
-            Last Updated: {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
+            <strong>Base URL:</strong> {BASE_URL} <br>
+            <strong>Last Updated:</strong> {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
         </div>
         
-        <!-- 目录树开始 -->
         {tree_content}
-        <!-- 目录树结束 -->
         
         <footer>
-            Generated by automated script
+            Generated by automated Python script
         </footer>
     </div>
 </body>
@@ -228,7 +247,7 @@ def main():
 
     with open(OUTPUT_FILENAME, 'w', encoding='utf-8') as f:
         f.write(full_html)
-        print(f"✅ HTML 文件已生成: {OUTPUT_FILENAME}")
+        print(f"✅ 暗黑模式 HTML 已生成: {OUTPUT_FILENAME}")
 
 if __name__ == "__main__":
     main()
