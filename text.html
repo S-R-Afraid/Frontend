@@ -1,0 +1,493 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <title>3D 等高线生成器 (支持颜色配置)</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            background-color: #000;
+            color: #fff;
+            font-family: sans-serif;
+        }
+
+        #canvas-container {
+            width: 100vw;
+            height: 100vh;
+            display: block;
+        }
+
+        /* 控制面板样式 */
+        #controls {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(20, 20, 20, 0.9);
+            padding: 20px;
+            border-radius: 8px;
+            pointer-events: auto;
+            width: 320px;
+            border: 1px solid #444;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
+        }
+
+        .control-group {
+            margin-bottom: 15px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-size: 13px;
+            color: #aaa;
+        }
+
+        input[type="range"] {
+            width: 100%;
+            cursor: pointer;
+            accent-color: #007bff;
+        }
+
+        /* 颜色按钮样式 */
+        .color-btn-group {
+            display: flex;
+            gap: 5px;
+            margin-top: 5px;
+        }
+
+        .color-btn {
+            flex: 1;
+            height: 30px;
+            border: 1px solid #555;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: transform 0.1s;
+        }
+
+        .color-btn:hover {
+            transform: scale(1.05);
+            border-color: #fff;
+        }
+
+        .active-btn {
+            border: 2px solid #fff;
+            box-shadow: 0 0 8px rgba(255, 255, 255, 0.5);
+        }
+
+        button#regenerate {
+            width: 100%;
+            padding: 10px;
+            background: #007bff;
+            border: none;
+            color: white;
+            cursor: pointer;
+            border-radius: 4px;
+            font-size: 14px;
+            font-weight: bold;
+            margin-top: 10px;
+        }
+
+        button#regenerate:hover {
+            background: #0056b3;
+        }
+
+        .hint {
+            font-size: 12px;
+            color: #666;
+            margin-top: 15px;
+            text-align: center;
+            border-top: 1px solid #333;
+            padding-top: 10px;
+        }
+    </style>
+    <!-- 引入 Three.js -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/simplex-noise/2.4.0/simplex-noise.min.js"></script>
+</head>
+
+<body>
+
+    <div id="controls">
+        <h3>等高线颜色与形态</h3>
+
+        <div class="control-group">
+            <label>预设配色方案</label>
+            <div class="color-btn-group" id="color-presets">
+                <!-- 按钮将由 JS 动态生成 -->
+            </div>
+        </div>
+
+        <div class="control-group">
+            <label>等高线密度: <span id="val-density">4</span></label>
+            <input type="range" id="density" min="1" max="15" step="0.5" value="4">
+        </div>
+
+        <div class="control-group">
+            <label>崎岖程度 (Scale): <span id="val-scale">60</span></label>
+            <input type="range" id="scale" min="20" max="150" value="60">
+        </div>
+        <div class="control-group">
+            <label>地形高度 (Amplitude): <span id="val-height">30</span></label>
+            <input type="range" id="height" min="10" max="100" value="30">
+        </div>
+
+        <button id="regenerate">刷新地形种子</button>
+        <div class="hint">🖱️ 左键旋转 | 右键平移 | 滚轮缩放</div>
+    </div>
+
+    <div id="canvas-container"></div>
+
+    <script>
+        /**
+         * 工具类：生成渐变纹理
+         * 将颜色数组转换为 Three.js 可用的 Texture
+         */
+        class GradientTextureGenerator {
+            static create(colors) {
+                // 创建一个 256x1 的 Canvas
+                const canvas = document.createElement('canvas');
+                canvas.width = 256;
+                canvas.height = 1;
+                const ctx = canvas.getContext('2d');
+
+                // 如果只有一个颜色，直接填充
+                if (colors.length === 1) {
+                    ctx.fillStyle = colors[0];
+                    ctx.fillRect(0, 0, 256, 1);
+                } else {
+                    // 创建线性渐变
+                    const gradient = ctx.createLinearGradient(0, 0, 256, 0);
+                    colors.forEach((color, index) => {
+                        // 计算每个颜色的位置 (0.0 ~ 1.0)
+                        const stop = index / (colors.length - 1);
+                        gradient.addColorStop(stop, color);
+                    });
+                    ctx.fillStyle = gradient;
+                    ctx.fillRect(0, 0, 256, 1);
+                }
+
+                // 生成 Texture
+                const texture = new THREE.CanvasTexture(canvas);
+                texture.wrapS = THREE.ClampToEdgeWrapping;
+                texture.wrapT = THREE.ClampToEdgeWrapping;
+                // 关键：禁用 mipmap 以保证颜色准确
+                texture.minFilter = THREE.LinearFilter;
+                texture.magFilter = THREE.LinearFilter;
+                return texture;
+            }
+        }
+
+        /**
+         * 第一部分：地形数据生成器 (TerrainDataGenerator)
+         */
+        class TerrainDataGenerator {
+            constructor(width, depth, options = {}) {
+                this.width = width;
+                this.depth = depth;
+                this.seed = options.seed || Math.random();
+                this.roughness = options.roughness || 50;
+                this.amplitude = options.amplitude || 20;
+                this.simplex = new SimplexNoise(this.seed.toString());
+
+                // 记录当前生成的最大最小高度，用于归一化颜色
+                this.minH = 0;
+                this.maxH = 0;
+            }
+
+            // 预计算所有点的高度，以便准确获取 min/max
+            generateHeightMap(segments) {
+                const data = [];
+                let min = Infinity;
+                let max = -Infinity;
+
+                for (let i = 0; i <= segments; i++) {
+                    for (let j = 0; j <= segments; j++) {
+                        const u = i / segments;
+                        const v = j / segments;
+                        const x = u * this.width;
+                        const z = v * this.depth;
+
+                        // 叠加三层噪声以获得丰富细节
+                        let y = 0;
+                        y += this.simplex.noise2D(x / this.roughness, z / this.roughness) * this.amplitude;
+                        y += this.simplex.noise2D(x / (this.roughness * 0.5), z / (this.roughness * 0.5)) * (this.amplitude * 0.5);
+                        y += this.simplex.noise2D(x / (this.roughness * 0.25), z / (this.roughness * 0.25)) * (this.amplitude * 0.1);
+
+                        if (y < min) min = y;
+                        if (y > max) max = y;
+                        data.push(y);
+                    }
+                }
+                this.minH = min;
+                this.maxH = max;
+                return data;
+            }
+
+            updateConfig(options) {
+                if (options.seed !== undefined) {
+                    this.seed = options.seed;
+                    this.simplex = new SimplexNoise(this.seed.toString());
+                }
+                if (options.roughness !== undefined) this.roughness = options.roughness;
+                if (options.amplitude !== undefined) this.amplitude = options.amplitude;
+            }
+        }
+
+        /**
+         * 第二部分：等高线可视化器
+         */
+        class ContourVisualizer {
+            constructor(containerId, terrainGenerator, options = {}) {
+                this.container = document.getElementById(containerId);
+                this.terrain = terrainGenerator;
+                this.density = options.density || 4.0;
+                this.thickness = options.thickness || 0.1;
+
+                // 默认颜色
+                this.colorArray = options.colors || ['#ffffff'];
+
+                this.scene = null;
+                this.camera = null;
+                this.renderer = null;
+                this.controls = null;
+                this.mesh = null;
+                this.uniforms = null;
+
+                this.initThreeJS();
+                this.createTerrainMesh();
+                this.animate();
+
+                window.addEventListener('resize', () => this.onResize(), false);
+            }
+
+            initThreeJS() {
+                this.scene = new THREE.Scene();
+                this.scene.background = new THREE.Color(0x050505);
+
+                const aspect = this.container.clientWidth / this.container.clientHeight;
+                this.camera = new THREE.PerspectiveCamera(45, aspect, 0.1, 2000);
+                this.camera.position.set(0, 120, 160);
+
+                this.renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+                this.renderer.setSize(this.container.clientWidth, this.container.clientHeight);
+                this.renderer.setPixelRatio(window.devicePixelRatio);
+                this.container.appendChild(this.renderer.domElement);
+
+                this.controls = new THREE.OrbitControls(this.camera, this.renderer.domElement);
+                this.controls.enableDamping = true;
+                this.controls.dampingFactor = 0.05;
+                this.controls.autoRotate = false;
+            }
+
+            // 核心：设置颜色数组接口
+            setColors(colors) {
+                this.colorArray = colors;
+                const newTexture = GradientTextureGenerator.create(colors);
+
+                if (this.uniforms) {
+                    this.uniforms.uGradientTexture.value = newTexture;
+                }
+            }
+
+            createTerrainMesh() {
+                if (this.mesh) {
+                    this.scene.remove(this.mesh);
+                    this.mesh.geometry.dispose();
+                    this.mesh.material.dispose();
+                }
+
+                const segments = 200; // 网格精度
+                const geometry = new THREE.PlaneGeometry(this.terrain.width, this.terrain.depth, segments, segments);
+
+                // 1. 获取高度数据
+                const heightData = this.terrain.generateHeightMap(segments);
+                const positionAttribute = geometry.attributes.position;
+
+                for (let i = 0; i < positionAttribute.count; i++) {
+                    positionAttribute.setZ(i, heightData[i]);
+                }
+
+                geometry.computeVertexNormals();
+
+                // 2. 生成初始渐变纹理
+                const gradTexture = GradientTextureGenerator.create(this.colorArray);
+
+                // 3. Shader 配置
+                this.uniforms = {
+                    uGradientTexture: { value: gradTexture },
+                    uLines: { value: 10.0 / this.density }, // 间距
+                    uThickness: { value: this.thickness },
+                    uMinHeight: { value: this.terrain.minH }, // 传入最低点
+                    uMaxHeight: { value: this.terrain.maxH }  // 传入最高点
+                };
+
+                const material = new THREE.ShaderMaterial({
+                    uniforms: this.uniforms,
+                    transparent: true,
+                    side: THREE.DoubleSide,
+                    vertexShader: `
+                varying float vHeight;
+                void main() {
+                    vHeight = position.z;
+                    gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+                }
+            `,
+                    fragmentShader: `
+                uniform sampler2D uGradientTexture; // 渐变纹理
+                uniform float uLines;
+                uniform float uThickness;
+                uniform float uMinHeight;
+                uniform float uMaxHeight;
+                
+                varying float vHeight;
+
+                void main() {
+                    // 1. 计算等高线逻辑
+                    float linePhase = fract(vHeight / uLines);
+                    float halfThick = uThickness * 0.5;
+                    
+                    // 如果不是等高线区域，丢弃
+                    if (linePhase > halfThick && linePhase < (1.0 - halfThick)) {
+                        discard;
+                    }
+
+                    // 2. 颜色采样逻辑
+                    // 将当前高度归一化到 0.0 ~ 1.0
+                    float normalizedH = (vHeight - uMinHeight) / (uMaxHeight - uMinHeight);
+                    // 钳制防止溢出
+                    normalizedH = clamp(normalizedH, 0.0, 1.0); 
+                    
+                    // 从纹理采样颜色 (y坐标取0.5即可)
+                    vec4 color = texture2D(uGradientTexture, vec2(normalizedH, 0.5));
+
+                    gl_FragColor = color;
+                }
+            `
+                });
+
+                this.mesh = new THREE.Mesh(geometry, material);
+                this.mesh.rotation.x = -Math.PI / 2;
+                this.scene.add(this.mesh);
+
+                // 可选：添加一个外框辅助线
+                // const helper = new THREE.BoxHelper(this.mesh, 0x333333);
+                // this.scene.add(helper);
+            }
+
+            updateParams(density) {
+                if (this.uniforms) {
+                    this.uniforms.uLines.value = 10.0 / density;
+                }
+            }
+
+            refreshTerrain() {
+                this.createTerrainMesh();
+            }
+
+            animate() {
+                requestAnimationFrame(() => this.animate());
+                this.controls.update();
+                this.renderer.render(this.scene, this.camera);
+            }
+
+            onResize() {
+                const width = this.container.clientWidth;
+                const height = this.container.clientHeight;
+                this.camera.aspect = width / height;
+                this.camera.updateProjectionMatrix();
+                this.renderer.setSize(width, height);
+            }
+        }
+
+        // ================= 逻辑控制与配置 =================
+
+        const terrainGen = new TerrainDataGenerator(200, 200, {
+            seed: Math.random(),
+            roughness: 60,
+            amplitude: 30
+        });
+
+        // 默认使用"黑客绿"纯色
+        const visualizer = new ContourVisualizer('canvas-container', terrainGen, {
+            density: 4,
+            colors: ['#00ff88']
+        });
+
+        // --- UI 交互逻辑 ---
+
+        // 1. 定义配色方案
+        const colorSchemes = [
+            { name: "Neon Green", colors: ["#00ff00"], style: "background:#00ff00" },
+            { name: "Heatmap", colors: ["#0000ff", "#00ffff", "#00ff00", "#ffff00", "#ff0000"], style: "background: linear-gradient(90deg, blue, cyan, lime, yellow, red)" },
+            { name: "Ocean", colors: ["#020024", "#090979", "#00d4ff"], style: "background: linear-gradient(90deg, #020024, #090979, #00d4ff)" },
+            { name: "Cyberpunk", colors: ["#ff00cc", "#3333ff"], style: "background: linear-gradient(90deg, #ff00cc, #3333ff)" },
+            { name: "Gold", colors: ["#bf953f", "#fcf6ba", "#bf953f", "#ff0000", "#ffff00", "#fcf6ba", "#bf953f"], style: "background: linear-gradient(90deg, #bf953f, #fcf6ba, #bf953f)" }
+        ];
+
+        // 2. 生成颜色按钮
+        const presetContainer = document.getElementById('color-presets');
+        colorSchemes.forEach((scheme, index) => {
+            const btn = document.createElement('div');
+            btn.className = 'color-btn';
+            btn.style = scheme.style;
+            btn.title = scheme.name;
+            if (index === 0) btn.classList.add('active-btn'); // 默认选中第一个
+
+            btn.addEventListener('click', () => {
+                // UI 更新
+                document.querySelectorAll('.color-btn').forEach(b => b.classList.remove('active-btn'));
+                btn.classList.add('active-btn');
+
+                // 核心调用：传递颜色数组
+                visualizer.setColors(scheme.colors);
+            });
+
+            presetContainer.appendChild(btn);
+        });
+
+        // 3. 其他参数绑定
+        const inputs = {
+            density: document.getElementById('density'),
+            scale: document.getElementById('scale'),
+            height: document.getElementById('height'),
+            btn: document.getElementById('regenerate')
+        };
+        const labels = {
+            density: document.getElementById('val-density'),
+            scale: document.getElementById('val-scale'),
+            height: document.getElementById('val-height')
+        };
+
+        inputs.density.addEventListener('input', (e) => {
+            const val = parseFloat(e.target.value);
+            labels.density.innerText = val;
+            visualizer.updateParams(val);
+        });
+
+        function regenerate() {
+            const scale = parseFloat(inputs.scale.value);
+            const height = parseFloat(inputs.height.value);
+
+            labels.scale.innerText = scale;
+            labels.height.innerText = height;
+
+            terrainGen.updateConfig({
+                seed: Math.random(), // 每次点击生成随机种子
+                roughness: scale,
+                amplitude: height
+            });
+
+            visualizer.refreshTerrain();
+        }
+
+        inputs.btn.addEventListener('click', regenerate);
+        inputs.scale.addEventListener('change', regenerate);
+        inputs.height.addEventListener('change', regenerate);
+
+    </script>
+</body>
+
+</html>

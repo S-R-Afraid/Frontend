@@ -1,0 +1,6 @@
+/* style.css */
+body {
+  margin: 0;
+  overflow: hidden;
+  /* 防止出现滚动条 */
+}

@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<!--V2版取消了依赖页面CSS设置，改为初始化时用脚本单独注入属性。此外，还支持使用网络字体-->
+
+<head>
+    <meta charset="UTF-8">
+    <title>Glitch Text Demo</title>
+
+    <style>
+        body {
+            background-color: #111;
+            color: #fff;
+            margin: 0;
+            min-height: 100vh;
+
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+        }
+
+        /* 乱码字符样式（TextScramble 使用） */
+        .dud {
+            opacity: 0.6;
+        }
+    </style>
+</head>
+
+<body>
+
+    <!-- 示例容器 -->
+    <div id="demo1"></div>
+    <div id="demo2"></div>
+    <div id="demo3"></div>
+    <div id="demo4"></div>
+
+    <!-- 核心脚本 -->
+    <script src="glitch-text.js"></script>
+
+    <!-- 实例初始化 -->
+    <script>
+        // 示例 1：Google Fonts（中文）
+        createGlitch('#demo1', {
+            phrases: [
+                "今天你领工资了吗？",
+                "工资是否按时发放",
+                "SCP-CN-40K 记录终止"
+            ],
+            obfu_chars: "░▒▓█▓▒░",
+            webFont: {
+                name: 'ZCOOL QingKe HuangYou',
+                url: 'https://fonts.googleapis.com/css2?family=ZCOOL+QingKe+HuangYou&display=swap'
+            },
+            color: "#ff3333",
+            fontSize: "36px",
+            fontWeight: "700",
+            start_time: 40,
+            end_time: 40,
+            disp_time: 1500,
+            delay: 0,
+            loop: true
+        });
+
+        // 示例 2：woff2 直链字体
+        createGlitch('#demo2', {
+            phrases: [
+                "console.log('Hello World');",
+                "System.out.println('Error');",
+                "rm -rf /"
+            ],
+            obfu_chars: "{}[]<>/\\!@#",
+            webFont: {
+                name: 'Hanalei Fill',
+                url: 'https://fonts.gstatic.font.im/s/hanaleifill/v23/fC1mPYtObGbfyQznIaQzPQi8UAjA.woff2'
+            },
+            color: "#00ff00",
+            fontSize: "18px",
+            fontWeight: "400",
+            start_time: 200,
+            end_time: 0,
+            disp_time: 800,
+            delay: 500,
+            loop: true
+        });
+
+        // 示例 3：仅使用本地字体
+        createGlitch('#demo3', {
+            phrases: [
+                "DESIGN",
+                "DEVELOPMENT",
+                "FUTURE"
+            ],
+            obfu_chars: "†‡µ±≠≈",
+            fontFamily: "Arial, Helvetica, sans-serif",
+            color: "#a64dff",
+            fontSize: "32px",
+            fontWeight: "400",
+            start_time: 60,
+            end_time: 60,
+            disp_time: 2500,
+            delay: 1000,
+            loop: true
+        });
+
+        // 示例 4：多行文本 + HTML 标签
+        createGlitch('#demo4', {
+            phrases: [
+                "正常的第一行<br>正常的第二行",
+                "长文本测试<br>使用标签换行<br>再换一行",
+                "使用换行符\n这里是第二行\n以及第三行"
+            ],
+            obfu_chars: "░▒▓",
+            webFont: {
+                name: 'Noto Serif SC',
+                url: 'https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;700&display=swap'
+            },
+            color: "#ffffff",
+            fontSize: "28px",
+            fontWeight: "400",
+            start_time: 40,
+            end_time: 150,
+            disp_time: 2000,
+            delay: 0,
+            loop: true
+        });
+    </script>
+
+</body>
+
+</html>

@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <title>ASC Player Auto-Init Demo</title>
+    <style>
+        /* 样式省略，与之前保持一致 */
+        body {
+            background: #121212;
+            color: #fff;
+            font-family: sans-serif;
+            text-align: center;
+        }
+
+        .player-wrapper {
+            width: 800px;
+            height: 450px;
+            background: #000;
+            margin: 20px auto;
+            border: 2px solid #333;
+        }
+
+        canvas {
+            width: 100%;
+            height: 100%;
+            display: block;
+        }
+
+        .controls {
+            margin-top: 20px;
+        }
+
+        #statusText {
+            color: #888;
+            margin-top: 10px;
+            font-family: monospace;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="player-wrapper">
+        <canvas id="ascCanvas"></canvas>
+    </div>
+
+    <div id="statusText">正在初始化...</div>
+
+    <div class="controls">
+        <button onclick="changeToApi()">API 模式 (换一个)</button>
+        <button onclick="changeToUrl()">URL 直连模式</button>
+    </div>
+
+    <!-- 引入上面的 JS -->
+    <script src="asc_player.js"></script>
+
+    <script>
+        const API_ENDPOINT = 'https://www.wenzhimo.xyz/api/random_asc.php';
+        // 如果是 URL 直连模式，填入具体文件地址
+        const DIRECT_FILE = 'https://www.wenzhimo.xyz/wp-content/uploads/image/test.asc2';
+
+        // ==========================================
+        //  初始化方式 1: 使用 API 自动加载
+        // ==========================================
+        let player = new ASCPlayer('ascCanvas', {
+            fontFamily: 'Courier New',
+            // --- 核心配置 ---
+            sourceType: 'api',       // 模式: 'api' 或 'url'
+            sourceUrl: API_ENDPOINT  // 对应的值
+        });
+
+        // 辅助：为了让按钮也能工作，我们增加一个 API 成功加载的回调
+        player.onApiSuccess = (url) => {
+            console.log("当前播放 URL:", url);
+        };
+
+        // ==========================================
+        //  按钮控制逻辑 (演示如何重新加载)
+        // ==========================================
+
+        function changeToApi() {
+            // 直接调用新封装的方法
+            player.loadFromApi(API_ENDPOINT);
+        }
+
+        function changeToUrl() {
+            // 你也可以在运行时手动调用 loadUrl
+            // 如果你有具体文件地址，替换下面的 DIRECT_FILE
+            // player.loadUrl(DIRECT_FILE); 
+
+            // 为了演示方便，弹窗输入
+            const url = prompt("请输入 .asc2/.asc3 文件地址:", DIRECT_FILE);
+            if (url) player.loadUrl(url);
+        }
+
+    </script>
+</body>
+
+</html>

@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>XY 示波器 (亮度调制 + 断线优化)</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            background-color: #000;
+            color: #0f0;
+            font-family: 'Segoe UI', sans-serif;
+        }
+
+        canvas {
+            display: block;
+        }
+
+        #controls {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(20, 20, 20, 0.9);
+            padding: 20px;
+            border: 1px solid #444;
+            border-radius: 6px;
+            color: #ccc;
+            width: 300px;
+        }
+
+        .control-item {
+            margin-bottom: 15px;
+        }
+
+        label {
+            display: block;
+            font-size: 12px;
+            margin-bottom: 5px;
+            color: #888;
+        }
+
+        input[type="file"] {
+            width: 100%;
+            font-size: 12px;
+        }
+
+        input[type="range"] {
+            width: 100%;
+            accent-color: #0f0;
+        }
+
+        audio {
+            width: 100%;
+            margin-top: 5px;
+            height: 30px;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div id="controls">
+        <div class="control-item">
+            <h3>XY 示波器</h3>
+            <input type="file" id="file-input" accept="audio/*">
+            <audio id="audio-player" controls crossorigin="anonymous"></audio>
+        </div>
+
+        <div class="control-item">
+            <label>断线阈值 (跳跃过大不连线)</label>
+            <input type="range" id="jump-limit" min="10" max="300" value="100">
+            <div id="jump-val" style="font-size:10px; text-align:right;">100px</div>
+        </div>
+
+        <div class="control-item">
+            <label>光束亮度 (Intensity)</label>
+            <input type="range" id="intensity" min="5" max="100" value="40">
+        </div>
+    </div>
+
+    <canvas id="scope"></canvas>
+
+    <script>
+        const canvas = document.getElementById('scope');
+        const ctx = canvas.getContext('2d', { alpha: false });
+
+        // UI 控件
+        const fileInput = document.getElementById('file-input');
+        const audioPlayer = document.getElementById('audio-player');
+        const jumpSlider = document.getElementById('jump-limit');
+        const jumpValDisplay = document.getElementById('jump-val');
+        const intensitySlider = document.getElementById('intensity');
+
+        // 参数
+        let maxJumpThreshold = 52; // 超过这个像素距离就不连线
+        let intensityGain = 10;     // 亮度增益
+
+        // 更新参数事件
+        jumpSlider.addEventListener('input', e => {
+            maxJumpThreshold = Number(e.target.value);
+            jumpValDisplay.textContent = maxJumpThreshold + "px";
+        });
+        intensitySlider.addEventListener('input', e => {
+            intensityGain = Number(e.target.value);
+        });
+
+        // 基础变量
+        let width, height;
+        let audioCtx, source, splitter, analyserL, analyserR;
+        let dataArrayL, dataArrayR;
+        let isInitialized = false;
+
+        function resize() {
+            width = window.innerWidth;
+            height = window.innerHeight;
+            canvas.width = width;
+            canvas.height = height;
+        }
+        window.addEventListener('resize', resize);
+        resize();
+
+        // 音频初始化
+        function initAudio() {
+            if (isInitialized) return;
+            audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+            splitter = audioCtx.createChannelSplitter(2);
+            analyserL = audioCtx.createAnalyser();
+            analyserR = audioCtx.createAnalyser();
+
+            analyserL.fftSize = 8192;
+            analyserR.fftSize = 8192;
+
+            const len = analyserL.frequencyBinCount;
+            dataArrayL = new Uint8Array(len);
+            dataArrayR = new Uint8Array(len);
+
+            source = audioCtx.createMediaElementSource(audioPlayer);
+            source.connect(splitter);
+            splitter.connect(analyserL, 0);
+            splitter.connect(analyserR, 1);
+            source.connect(audioCtx.destination);
+
+            isInitialized = true;
+            draw();
+        }
+
+        fileInput.addEventListener('change', e => {
+            const file = e.target.files[0];
+            if (!file) return;
+            const url = URL.createObjectURL(file);
+            audioPlayer.src = url;
+            audioPlayer.play();
+            if (!isInitialized) initAudio();
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+        });
+
+        audioPlayer.addEventListener('play', () => {
+            if (!isInitialized) initAudio();
+            if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
+        });
+
+        // --- 核心绘图循环 ---
+        function draw() {
+            requestAnimationFrame(draw);
+            if (!isInitialized) return;
+
+            analyserL.getByteTimeDomainData(dataArrayL);
+            analyserR.getByteTimeDomainData(dataArrayR);
+
+            // 清屏
+            ctx.fillStyle = '#000000';
+            ctx.fillRect(0, 0, width, height);
+
+            ctx.lineCap = 'round';
+
+            const cx = width / 2;
+            const cy = height / 2;
+            const scale = Math.min(width, height) * 0.45;
+
+            const len = dataArrayL.length;
+
+            // 初始化第一个点
+            let prevX = (dataArrayL[0] / 128.0 - 1.0) * scale + cx;
+            let prevY = -(dataArrayR[0] / 128.0 - 1.0) * scale + cy;
+
+            // 步进优化：step=1 最细腻，step=2 性能更好
+            const step = 1;
+
+            for (let i = step; i < len; i += step) {
+                const vL = (dataArrayL[i] / 128.0) - 1.0;
+                const vR = (dataArrayR[i] / 128.0) - 1.0;
+
+                const x = vL * scale + cx;
+                const y = -vR * scale + cy;
+
+                // 1. 计算距离 (速度)
+                const dx = x - prevX;
+                const dy = y - prevY;
+                const dist = Math.sqrt(dx * dx + dy * dy);
+
+                // 2. 核心判断：如果距离太远，视为噪点或飞线，不绘制
+                if (dist > maxJumpThreshold) {
+                    // 重要：虽然不画线，但必须更新起点到当前位置，
+                    // 否则下一次画线会从很远的老地方连过来，导致更大的飞线。
+                    prevX = x;
+                    prevY = y;
+                    continue;
+                }
+
+                // 忽略微小移动 (可选优化)
+                if (dist < 0.5) continue;
+
+                // 3. 亮度调制计算
+                let alpha = intensityGain / dist;
+                if (alpha > 1.0) alpha = 1.0;
+                if (alpha < 0.05) alpha = 0.05;
+
+                // 4. 绘制线段
+                ctx.beginPath();
+                ctx.strokeStyle = `rgba(0, 255, 0, ${alpha})`;
+                ctx.lineWidth = 1 + alpha;
+                ctx.moveTo(prevX, prevY);
+                ctx.lineTo(x, y);
+                ctx.stroke();
+
+                // 更新坐标
+                prevX = x;
+                prevY = y;
+            }
+        }
+    </script>
+</body>
+
+</html>

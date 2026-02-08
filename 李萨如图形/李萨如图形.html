@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="zh">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Multi-Instance Lissajous</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            background-color: #121212;
+            font-family: sans-serif;
+            color: white;
+            display: flex;
+            flex-direction: row;
+            gap: 20px;
+            justify-content: center;
+            align-items: flex-start;
+            flex-wrap: wrap;
+        }
+
+        .canvas-wrapper {
+            position: relative;
+            background: #1e1e1e;
+            border-radius: 8px;
+            padding: 10px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+            padding: 0 10px;
+        }
+
+        h3 {
+            margin: 0;
+            font-size: 16px;
+            color: #ccc;
+        }
+
+        .sketch-container {
+            width: 600px;
+            /* 控制画布大小 */
+            height: 600px;
+            background: #000;
+            overflow: hidden;
+            border-radius: 4px;
+        }
+
+        .toggle-btn {
+            padding: 6px 12px;
+            background-color: #333;
+            color: #fff;
+            border: 1px solid #555;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+            transition: all 0.3s;
+        }
+
+        .toggle-btn:hover {
+            background-color: #444;
+        }
+
+        .toggle-btn.active {
+            background-color: #2e7d32;
+            border-color: #4caf50;
+        }
+    </style>
+
+    <!-- 1. 引入 p5.js 库 -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.4.2/p5.min.js"></script>
+
+    <!-- 2. 引入核心逻辑文件 -->
+    <script src="李萨如图形.js"></script>
+</head>
+
+<body>
+
+    <!-- 实例 1：标准 8x8 -->
+    <div class="canvas-wrapper">
+        <div class="header">
+            <h3>标准视图 (8x8)</h3>
+            <button id="btn-1" class="toggle-btn">加载中...</button>
+        </div>
+        <div id="canvas-container-1" class="sketch-container"></div>
+    </div>
+
+    <!-- 实例 2：快速 10x10 -->
+    <div class="canvas-wrapper">
+        <div class="header">
+            <h3>极速视图 (10x10)</h3>
+            <button id="btn-2" class="toggle-btn">加载中...</button>
+        </div>
+        <div id="canvas-container-2" class="sketch-container"></div>
+    </div>
+
+    <!-- 3. 初始化脚本：仅包含配置和绑定 -->
+    <script>
+        // 初始化实例 1
+        const sys1 = new LissajousSystem('canvas-container-1', {
+            colCount: 8,
+            rowCount: 8,
+            baseSpeed: 0.015,
+            keepPath: true
+        });
+        sys1.bindButton('btn-1');
+
+        // 初始化实例 2
+        const sys2 = new LissajousSystem('canvas-container-2', {
+            colCount: 10,
+            rowCount: 10,
+            baseSpeed: 0.04, // 速度更快
+            keepPath: true,  // 默认开启保留模式
+            hueStartX: 100,  // 不同的色相起始点
+            hueStartY: 200
+        });
+        sys2.bindButton('btn-2');
+    </script>
+</body>
+
+</html>

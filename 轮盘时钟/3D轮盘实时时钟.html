@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>线性流体时间 - 3D 连续滚轮</title>
+    <style>
+        :root {
+            --bg-color: #0f0f12;
+            --text-color: #e0e0e0;
+            --drum-bg: #1e1e24;
+            --highlight: #00d2ff;
+
+            /* 尺寸配置 */
+            --face-width: 60px;
+            --face-height: 80px;
+            --font-size: 48px;
+            --perspective: 1500px;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            font-family: 'Segoe UI Mono', 'Courier New', monospace;
+            overflow: hidden;
+        }
+
+        .clock-container {
+            display: flex;
+            gap: 15px;
+            perspective: var(--perspective);
+            transform-style: preserve-3d;
+            /* 稍微俯视，增强立体感 */
+            transform: rotateX(5deg);
+        }
+
+        .group-wrapper {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .group {
+            display: flex;
+            gap: 2px;
+            padding: 5px;
+            background: #111;
+            border: 1px solid #333;
+            border-radius: 6px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+        }
+
+        .label {
+            margin-top: 10px;
+            font-size: 12px;
+            color: #555;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            font-weight: bold;
+        }
+
+        /* 滚轮视窗 */
+        .drum-window {
+            width: var(--face-width);
+            height: var(--face-height);
+            position: relative;
+            /* 关键：不隐藏overflow，而是用mask做渐变，保留3D感 */
+            transform-style: preserve-3d;
+        }
+
+        /* 顶部和底部的光影遮罩，制造圆柱体没入黑暗的效果 */
+        .drum-window::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(to bottom,
+                    var(--bg-color) 0%,
+                    rgba(0, 0, 0, 0.2) 20%,
+                    rgba(0, 0, 0, 0) 50%,
+                    rgba(0, 0, 0, 0.2) 80%,
+                    var(--bg-color) 100%);
+            pointer-events: none;
+            z-index: 10;
+            transform: translateZ(1px);
+        }
+
+        /* 实际旋转的圆柱体 */
+        .drum {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 0;
+            height: 0;
+            transform-style: preserve-3d;
+            /* 无CSS动画，全靠JS每帧驱动 */
+        }
+
+        .face {
+            position: absolute;
+            width: var(--face-width);
+            height: var(--face-height);
+            left: calc(var(--face-width) / -2);
+            top: calc(var(--face-height) / -2);
+
+            line-height: var(--face-height);
+            text-align: center;
+            font-size: var(--font-size);
+            font-weight: bold;
+            color: var(--text-color);
+
+            backface-visibility: hidden;
+            background-color: var(--drum-bg);
+            border-top: 1px solid rgba(255, 255, 255, 0.05);
+            border-bottom: 1px solid rgba(0, 0, 0, 0.4);
+        }
+
+        /* 分隔符 */
+        .separator {
+            font-size: 40px;
+            line-height: 80px;
+            color: #444;
+            margin: 0 2px;
+            text-shadow: 0 2px 5px black;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="clock-container" id="stage">
+        <!-- 结构由 JS 生成 -->
+    </div>
+
+    <script>
+        class Drum {
+            constructor(range) {
+                this.logicalRange = range;
+
+                // 为了让多边形足够圆，我们重复填充数组直到至少有 12 个面
+                // 比如 [0-9] 只有10面，视觉不够圆，我们可以重复变成 20 面
+                // [0-5] 只有6面(六边形)，重复变成 [0-5, 0-5] 12面
+                this.facesArray = [...range];
+                while (this.facesArray.length < 16) {
+                    this.facesArray = this.facesArray.concat(range);
+                }
+
+                this.totalFaces = this.facesArray.length;
+                this.anglePerFace = 360 / this.totalFaces;
+                // 计算边心距，确保面贴合圆柱表面
+                this.radius = 40 / Math.tan(Math.PI / this.totalFaces); // 40 = height/2
+
+                this.element = document.createElement('div');
+                this.element.className = 'drum-window';
+                this.drumEl = document.createElement('div');
+                this.drumEl.className = 'drum';
+                this.element.appendChild(this.drumEl);
+
+                // 创建面
+                this.facesArray.forEach((num, i) => {
+                    const face = document.createElement('div');
+                    face.className = 'face';
+                    face.textContent = num;
+
+                    const angle = this.anglePerFace * i;
+                    // 注意：这里我们生成标准的圆柱，0号面在0度
+                    face.style.transform = `rotateX(${angle}deg) translateZ(${this.radius}px)`;
+                    this.drumEl.appendChild(face);
+                });
+            }
+
+            /**
+             * 设置滚轮显示的数值
+             * @param {number} value 连续的浮点数。
+             * 例如：对于 [0-9] 的轮子，传入 5.5 代表转到 5 和 6 中间。
+             * 对于 [0-5] 的轮子，传入 2.5 代表转到 2 和 3 中间。
+             */
+            setFloatValue(value) {
+                // 计算需要转动的角度
+                // 1个单位数值 = 转动1个面的角度
+                // 因为我们的 facesArray 可能是 range 的倍数 (例如 [0-5, 0-5])
+                // 传入的 value 5.9 -> 6.0 (变成0) 
+                // 我们的物理结构支持无限滚动，所以直接映射即可
+
+                const angle = value * -this.anglePerFace;
+
+                // 使用 translateZ(-radius) 抵消半径，让当前面处于视窗平面 Z=0 处
+                this.drumEl.style.transform = `translateZ(-${this.radius}px) rotateX(${angle}deg)`;
+            }
+        }
+
+        // --- 构建时钟 ---
+
+        const stage = document.getElementById('stage');
+        const drums = {}; // 存储所有引用
+
+        const config = [
+            {
+                label: 'Year',
+                items: [
+                    { k: 'y1', r: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9] },
+                    { k: 'y2', r: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9] },
+                    { k: 'y3', r: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9] },
+                    { k: 'y4', r: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9] }
+                ]
+            },
+            { sep: '-' },
+            {
+                label: 'Mon',
+                items: [
+                    { k: 'm1', r: [0, 1] },
+                    { k: 'm2', r: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9] }
+                ]
+            },
+            { sep: '-' },
+            {
+                label: 'Day',
+                items: [
+                    { k: 'd1', r: [0, 1, 2, 3] },
+                    { k: 'd2', r: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9] }
+                ]
+            },
+            { sep: ':' },
+            {
+                label: 'Hour',
+                items: [
+                    { k: 'h1', r: [0, 1, 2] },
+                    { k: 'h2', r: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9] }
+                ]
+            },
+            { sep: ':' },
+            {
+                label: 'Min',
+                items: [
+                    { k: 'min1', r: [0, 1, 2, 3, 4, 5] }, // 十位 0-5
+                    { k: 'min2', r: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9] } // 个位 0-9
+                ]
+            },
+            { sep: ':' },
+            {
+                label: 'Sec',
+                items: [
+                    { k: 's1', r: [0, 1, 2, 3, 4, 5] }, // 十位 0-5
+                    { k: 's2', r: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9] } // 个位 0-9
+                ]
+            }
+        ];
+
+        config.forEach(group => {
+            if (group.sep) {
+                const s = document.createElement('div');
+                s.className = 'separator';
+                s.textContent = group.sep;
+                stage.appendChild(s);
+            } else {
+                const wrap = document.createElement('div');
+                wrap.className = 'group-wrapper';
+
+                const g = document.createElement('div');
+                g.className = 'group';
+
+                group.items.forEach(item => {
+                    const drum = new Drum(item.r);
+                    drums[item.k] = drum;
+                    g.appendChild(drum.element);
+                });
+
+                const l = document.createElement('div');
+                l.className = 'label';
+                l.textContent = group.label;
+
+                wrap.appendChild(g);
+                wrap.appendChild(l);
+                stage.appendChild(wrap);
+            }
+        });
+
+
+        // --- 核心数学：时间映射 ---
+
+        function loop() {
+            const now = new Date();
+
+            // 获取基础时间分量
+            // 使用 getMilliseconds 实现平滑移动
+            const ms = now.getMilliseconds();
+            const s = now.getSeconds() + ms / 1000;
+            const m = now.getMinutes() + s / 60;
+            const h = now.getHours() + m / 60;
+
+            // 年月日的平滑计算比较特殊，我们需要计算 "年内进度"
+            // 简单起见，我们假设每月30天，计算一个近似的平滑值，视觉效果足够
+            const day = now.getDate() + h / 24;
+            const month = (now.getMonth() + 1) + (day - 1) / 30; // 粗略近似
+            const year = now.getFullYear() + (month - 1) / 12;
+
+            // --- 应用逻辑：所有位都是线性连续的 ---
+
+            // 秒 (Seconds)
+            // 个位：0-9. 值就是 s 本身 (e.g. 5.5)
+            drums.s2.setFloatValue(s);
+            // 十位：0-5. 每一圈是60秒，即每10秒走一个字。
+            // 值 = 总秒数 / 10。 例如 59秒 -> 5.9。 60秒 -> 6.0(即0)
+            drums.s1.setFloatValue(s / 10);
+
+            // 分 (Minutes)
+            // 个位：0-9. 值就是 m 本身
+            drums.min2.setFloatValue(m);
+            // 十位：0-5. 值 = 总分钟 / 10
+            drums.min1.setFloatValue(m / 10);
+
+            // 时 (Hours)
+            // 个位：0-9. 值 = h
+            drums.h2.setFloatValue(h);
+            // 十位：0-2. 值 = h / 10
+            drums.h1.setFloatValue(h / 10);
+
+            // 日 (Days)
+            drums.d2.setFloatValue(day);
+            drums.d1.setFloatValue(day / 10);
+
+            // 月 (Months)
+            drums.m2.setFloatValue(month);
+            drums.m1.setFloatValue(month / 10);
+
+            // 年 (Years)
+            drums.y4.setFloatValue(year);
+            drums.y3.setFloatValue(year / 10);
+            drums.y2.setFloatValue(year / 100);
+            drums.y1.setFloatValue(year / 1000);
+
+            requestAnimationFrame(loop);
+        }
+
+        loop();
+
+    </script>
+</body>
+
+</html>

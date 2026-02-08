@@ -1,0 +1,12 @@
+/*脚注样式*/
+.footnotes-sub-style a {
+    color: var(--accent);
+}
+
+.footnotes-item-style {
+    color: var(--muted);
+}
+
+.footnotes-item-style a {
+    color: var(--accent);
+}

@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <title>3D 等高线模块化示例</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            background: #000;
+        }
+
+        #canvas-container {
+            width: 100vw;
+            height: 100vh;
+        }
+    </style>
+
+    <!-- 1. 外部依赖库 (CDN) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/simplex-noise/2.4.0/simplex-noise.min.js"></script>
+
+    <!-- 2. 引入自定义模块 -->
+    <script src="TerrainDataGenerator.js"></script>
+    <script src="ContourVisualizer.js"></script>
+</head>
+
+<body>
+
+    <div id="canvas-container"></div>
+
+    <script>
+        // --- 初始化代码 ---
+
+        // 1. 创建地形数据生成器
+        // 可以在这里设置种子、崎岖度等
+        const terrainGen = new TerrainDataGenerator(200, 200, {
+            seed: 999,      // 种子
+            roughness: 60,  // 崎岖度
+            amplitude: 35   // 高度
+        });
+
+        // 2. 创建可视化器
+        // 这里演示传入颜色数组：从深蓝到青色，再到明黄的渐变
+        const visualizer = new ContourVisualizer('canvas-container', terrainGen, {
+            density: 3.5,     // 等高线密度
+            thickness: 0.1,   // 线条粗细
+            colors: ["#000088", "#00ffff", "#ffff00"] // 颜色数组：渐变色
+            // colors: ["#00ff00"] // 如果只传一个颜色，则是纯色
+        });
+
+        console.log("地形已生成，请使用鼠标左键旋转，右键平移。");
+    </script>
+</body>
+
+</html>

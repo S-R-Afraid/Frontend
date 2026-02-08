@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Audio Visualizer Pro</title>
+    <style>
+        /* 全局重置与字体 */
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            /* 深色渐变背景 */
+            background: linear-gradient(135deg, #0f0c29, #302b63, #24243e);
+            color: #fff;
+            overflow: hidden;
+        }
+
+        /* 玻璃拟态卡片容器 */
+        .glass-card {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 20px;
+            padding: 40px;
+            width: 90%;
+            max-width: 800px;
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.6);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            transition: transform 0.3s ease;
+        }
+
+        .glass-card:hover {
+            transform: translateY(-5px);
+        }
+
+        h1 {
+            font-weight: 200;
+            letter-spacing: 2px;
+            margin-bottom: 30px;
+            text-transform: uppercase;
+            background: linear-gradient(to right, #00c6ff, #0072ff);
+            background-clip: border-box;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            font-size: 1.8rem;
+        }
+
+        /* 自定义文件上传按钮 */
+        .upload-btn-wrapper {
+            position: relative;
+            overflow: hidden;
+            display: inline-block;
+            margin-bottom: 25px;
+        }
+
+        .btn {
+            border: 2px solid #00c6ff;
+            color: #00c6ff;
+            background-color: transparent;
+            padding: 12px 30px;
+            border-radius: 50px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            box-shadow: 0 0 10px rgba(0, 198, 255, 0.1);
+        }
+
+        .btn:hover {
+            background-color: #00c6ff;
+            color: #0f0c29;
+            box-shadow: 0 0 20px rgba(0, 198, 255, 0.6);
+        }
+
+        .upload-btn-wrapper input[type=file] {
+            font-size: 100px;
+            position: absolute;
+            left: 0;
+            top: 0;
+            opacity: 0;
+            cursor: pointer;
+            height: 100%;
+            width: 100%;
+        }
+
+        /* 音频播放器美化 (尽可能) */
+        audio {
+            width: 100%;
+            margin-bottom: 25px;
+            border-radius: 10px;
+            opacity: 0.9;
+        }
+
+        /* 去除 Chrome 默认播放器背景，使其更融合 (部分浏览器有效) */
+        audio::-webkit-media-controls-panel {
+            background-color: #e6e6e6;
+        }
+
+        /* Canvas 样式 */
+        .canvas-container {
+            width: 100%;
+            position: relative;
+            border-radius: 12px;
+            overflow: hidden;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            background: rgba(0, 0, 0, 0.3);
+            box-shadow: inset 0 0 30px rgba(0, 0, 0, 0.8);
+        }
+
+        canvas {
+            display: block;
+            width: 100%;
+            height: 250px;
+        }
+
+        /* 状态文字 */
+        .status {
+            margin-top: 15px;
+            font-size: 0.9rem;
+            color: rgba(255, 255, 255, 0.6);
+            min-height: 20px;
+        }
+
+        /* 正在播放时的动画效果 */
+        .playing-indicator {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            background-color: #00ff88;
+            border-radius: 50%;
+            margin-right: 8px;
+            box-shadow: 0 0 10px #00ff88;
+            animation: pulse 1.5s infinite;
+            opacity: 0;
+        }
+
+        .playing .playing-indicator {
+            opacity: 1;
+        }
+
+        @keyframes pulse {
+            0% {
+                transform: scale(0.95);
+                opacity: 0.7;
+            }
+
+            50% {
+                transform: scale(1.2);
+                opacity: 1;
+            }
+
+            100% {
+                transform: scale(0.95);
+                opacity: 0.7;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="glass-card">
+        <h1>Audio Visualizer</h1>
+
+        <div class="upload-btn-wrapper">
+            <button class="btn">选择音乐文件</button>
+            <input type="file" id="fileInput" accept="audio/*" />
+        </div>
+
+        <audio id="audioPlayer" controls preload="auto"></audio>
+
+        <div class="canvas-container">
+            <canvas id="waveformCanvas"></canvas>
+        </div>
+
+        <div class="status" id="statusText">
+            <span class="playing-indicator"></span><span id="textContent">等待上传...</span>
+        </div>
+    </div>
+
+    <script>
+        const DEFAULT_AUDIO_URL = "https://www.wenzhimo.xyz/wp-content/uploads/2025/12/Unchosen.mp3";
+        const DEFAULT_AUDIO_NAME = "示例音频";
+
+
+        const fileInput = document.getElementById('fileInput');
+        const audioPlayer = document.getElementById('audioPlayer');
+        const canvas = document.getElementById('waveformCanvas');
+        const ctx = canvas.getContext('2d');
+        const statusTextContent = document.getElementById('textContent');
+        const statusContainer = document.getElementById('statusText');
+
+        let audioContext;
+        let analyser;
+        let source;
+        let isInitialized = false;
+        let animationId;
+
+        function resizeCanvas() {
+            canvas.width = canvas.parentElement.offsetWidth;
+            canvas.height = canvas.parentElement.offsetHeight;
+        }
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+
+
+        function loadDefaultAudio() {
+            audioPlayer.crossOrigin = "anonymous";
+            audioPlayer.preload = "auto";
+            audioPlayer.src = DEFAULT_AUDIO_URL;
+            audioPlayer.load();
+
+            statusTextContent.textContent = "正在加载示例音频...";
+
+            audioPlayer.addEventListener(
+                "canplay",
+                () => {
+                    statusTextContent.textContent = `准备就绪: ${DEFAULT_AUDIO_NAME}`;
+                },
+                { once: true }
+            );
+
+            audioPlayer.addEventListener(
+                "error",
+                () => {
+                    statusTextContent.textContent = "示例音频加载失败";
+                },
+                { once: true }
+            );
+        }
+
+
+        function initAudioContext() {
+            if (isInitialized) return;
+            const AudioContext = window.AudioContext || window.webkitAudioContext;
+            audioContext = new AudioContext();
+            analyser = audioContext.createAnalyser();
+
+            // 增加 FFT 大小以获得更平滑的波形
+            analyser.fftSize = 2048;
+
+            source = audioContext.createMediaElementSource(audioPlayer);
+            source.connect(analyser);
+            analyser.connect(audioContext.destination);
+            isInitialized = true;
+        }
+
+        fileInput.addEventListener('change', function (e) {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const fileURL = URL.createObjectURL(file);
+            audioPlayer.src = fileURL;
+            statusTextContent.textContent = `正在播放: ${file.name}`;
+
+            initAudioContext();
+
+            if (audioContext.state === 'suspended') {
+                audioContext.resume();
+            }
+
+            audioPlayer.play()
+                .then(() => {
+                    statusContainer.classList.add('playing');
+                })
+                .catch(err => {
+                    console.log("Auto-play blocked");
+                    statusTextContent.textContent = `准备就绪: ${file.name} (请点击播放)`;
+                });
+
+            // 如果之前有动画循环，先取消，防止叠加
+            if (animationId) cancelAnimationFrame(animationId);
+            drawWaveform();
+        });
+
+        audioPlayer.addEventListener('pause', () => {
+            statusContainer.classList.remove('playing');
+        });
+
+        audioPlayer.addEventListener('play', () => {
+            initAudioContext();
+            statusContainer.classList.add('playing');
+            if (audioContext && audioContext.state === 'suspended') {
+                audioContext.resume();
+            }
+            if (!animationId) {
+                drawWaveform();
+            }
+        });
+
+
+        function drawWaveform() {
+            animationId = requestAnimationFrame(drawWaveform);
+
+            if (!isInitialized) return;
+
+            const bufferLength = analyser.fftSize;
+            const dataArray = new Uint8Array(bufferLength);
+            analyser.getByteTimeDomainData(dataArray);
+
+            // 1. 清除画布，带一点透明度以产生"拖影"效果 (可选，这里用全清)
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // 2. 创建绚丽的线性渐变
+            const gradient = ctx.createLinearGradient(0, 0, canvas.width, 0);
+            gradient.addColorStop(0, '#00c6ff');    // 亮蓝
+            gradient.addColorStop(0.5, '#0072ff');  // 深蓝
+            gradient.addColorStop(1, '#00ff88');    // 荧光绿
+
+            ctx.lineWidth = 3; // 线条加粗
+            ctx.strokeStyle = gradient;
+
+            // 3. 添加发光效果 (Glow Effect)
+            ctx.shadowBlur = 10;
+            ctx.shadowColor = "rgba(0, 198, 255, 0.5)";
+
+            ctx.beginPath();
+
+            const sliceWidth = canvas.width * 1.0 / bufferLength;
+            let x = 0;
+
+            for (let i = 0; i < bufferLength; i++) {
+                const v = dataArray[i] / 128.0;
+                const y = v * canvas.height / 2;
+
+                // 使用贝塞尔曲线使波形更平滑
+                if (i === 0) {
+                    ctx.moveTo(x, y);
+                } else {
+                    // 简单的线性连接，对于高 fftSize 已经足够平滑
+                    // 如果需要极致平滑可以使用 quadraticCurveTo
+                    ctx.lineTo(x, y);
+                }
+
+                x += sliceWidth;
+            }
+
+            ctx.lineTo(canvas.width, canvas.height / 2);
+            ctx.stroke();
+
+            // 重置阴影，避免影响性能或其他绘制
+            ctx.shadowBlur = 0;
+        }
+        loadDefaultAudio();
+
+    </script>
+</body>
+
+</html>

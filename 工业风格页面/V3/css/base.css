@@ -1,0 +1,30 @@
+@font-face {
+    font-family: "华康金文体W3";
+    src: url("../asset/fonts/华康金文体W3.TTF") format("truetype");
+    font-weight: 400;
+    font-style: normal;
+    font-display: swap;
+}
+
+/* 全局变量 */
+:root {
+    --bg: #0a0a0a;
+    --panel: #111;
+    --text: #e5e5e5;
+    --muted: #c4ba78;
+    --accent: #ffb700;
+}
+
+* {
+    box-sizing: border-box;
+}
+
+html,
+body {
+    margin: 0;
+    height: 100%;
+    background: var(--bg);
+    color: var(--text);
+    font-family: system-ui, sans-serif;
+    overflow: hidden;
+}

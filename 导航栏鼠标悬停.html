@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>导航栏悬停效果</title>
+    <style>
+        nav {
+            text-align: center;
+            background-color: #2c76f8;
+            padding: 10px 0;
+        }
+
+        nav a {
+            padding: 10px 20px;
+            text-decoration: none;
+            background-color:#9fc2ff;
+            color: black;
+            display: inline-block;
+            border: 1px solid #ddd;
+            border-radius: 20px;
+            transition: color 0.3s;
+            margin: 0 5px;
+        }
+
+        nav a:hover {
+            background-color: orange;
+            color:#f0f0f0;
+        }
+
+        .content {
+            color: aliceblue;
+            font-size: 30px;
+            text-align: center;
+            padding: 10px;
+        }
+    </style>
+</head>
+<body>
+    <nav>
+        <div class="content">安徽工业大学</div>
+        <a href="#">首页</a>
+        <a href="#">关于</a>
+        <a href="#">服务</a>
+        <a href="#">联系我们</a>
+    </nav>
+</body>
+</html>

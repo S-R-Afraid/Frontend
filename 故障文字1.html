@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="zh">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>faulttext auto</title>
+    <style>
+      * {
+        font-size: 2vmin;
+        margin: 0;
+        padding: 0;
+      }
+
+      body {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        width: 100%;
+        height: 100vh;
+        background-color: #000;
+        overflow: hidden;
+      }
+
+      .container {
+        position: absolute;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        cursor: pointer;
+      }
+
+      .faulttext {
+        position: absolute;
+        font-family: "Noto Sans CJK SC", "Microsoft YaHei", Impact, sans-serif;
+        font-size: 5rem;
+        color: #fff;
+        letter-spacing: 0;
+        line-height: 1;
+        writing-mode: horizontal-tb;
+        text-orientation: mixed;
+        user-select: none;
+        transition: all 0.3s ease;
+        display: inline-block;
+      }
+
+      .faulttext_fault::after,
+      .faulttext_fault::before {
+        content: attr(data-text);
+        position: absolute;
+        left: 0;
+        top: 0;
+        mix-blend-mode: screen;
+      }
+
+      .faulttext_fault::after {
+        color: #ff0000;
+        transform: translateX(2%);
+      }
+
+      .faulttext_fault::before {
+        color: #0000ff;
+        transform: translateX(-2%);
+      }
+    </style>
+  </head>
+
+  <body>
+    <div class="container" onclick="faulttext.fault()">
+      <p class="faulttext" data-text="文止墨">文止墨</p>
+      <p class="faulttext" data-text="文止墨">文止墨</p>
+      <p class="faulttext" data-text="文止墨">文止墨</p>
+      <p class="faulttext" data-text="文止墨">文止墨</p>
+    </div>
+
+    <script>
+      // 自动 Glitch 效果
+      const faulttext = {
+        player: {},
+        texts: [],
+        words: ["文止墨", "JIEJOE", "夢と電光", "GLITCH", "PIXEL ERROR"], // 你可以在这里添加更多文字
+        currentIndex: 0,
+
+        init() {
+          this.texts = [...document.getElementsByClassName("faulttext")];
+          this.loop();
+        },
+
+        // 切换文字
+        changeText() {
+          this.currentIndex = (this.currentIndex + 1) % this.words.length;
+          const newText = this.words[this.currentIndex];
+          this.texts.forEach((t) => {
+            t.textContent = newText;
+            t.setAttribute("data-text", newText);
+          });
+        },
+
+        // 故障动画
+        fault() {
+          clearInterval(this.player);
+          setTimeout(() => {
+            clearInterval(this.player);
+            this.texts.forEach((text) => {
+              text.classList.remove("faulttext_fault");
+              text.style.transform = "";
+              text.style.clipPath = "";
+            });
+            // 故障结束后更换文字
+            this.changeText();
+          }, 800);
+
+          this.player = setInterval(() => {
+            this.texts.forEach((text) => {
+              text.classList.add("faulttext_fault");
+              text.style.transform = `translate(${Math.random() * 60 - 30}%,${
+                Math.random() * 60 - 30
+              }%)`;
+              let x = Math.random() * 100;
+              let y = Math.random() * 100;
+              let h = Math.random() * 50 + 50;
+              let w = Math.random() * 40 + 10;
+              text.style.clipPath = `polygon(${x}% ${y}%, ${x + w}% ${y}%, ${
+                x + w
+              }% ${y + h}%, ${x}% ${y + h}%)`;
+            });
+          }, 30);
+        },
+
+        // 定时循环
+        loop() {
+          this.fault();
+          setInterval(() => {
+            this.fault();
+          }, 4000); // 每 4 秒触发一次
+        },
+      };
+
+      faulttext.init();
+    </script>
+  </body>
+</html>

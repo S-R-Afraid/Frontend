@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>时钟，然后是时钟</title>
+<style>
+  body {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 40px;
+    background: #111;
+    color: #fff;
+    font-family: sans-serif;
+    height: 100vh;
+    justify-content: center;
+  }
+
+  h2 { margin: 0; }
+
+  /* 通用布局 */
+  .clock-row {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+  }
+
+  /* === 版本 A: 普通过渡 === */
+  .app-a {
+    display: flex;
+    gap: 16px;
+  }
+  .digit-a {
+    display: grid;
+    grid-template-columns: repeat(4, 16px);
+    grid-template-rows: repeat(6, 16px);
+    gap: 2px;
+  }
+  .clock-a {
+    width: 16px;
+    height: 16px;
+    position: relative;
+  }
+  .hour-a, .minute-a {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform-origin: bottom center;
+    background: white;
+    border-radius: 1px;
+    transition: transform 0.6s ease-in-out;
+  }
+  .hour-a {
+    width: 2px;
+    height: 40%;
+  }
+  .minute-a {
+    width: 1px;
+    height: 55%;
+  }
+
+  /* === 版本 B: 弹性过渡 === */
+  .app-b {
+    display: flex;
+    gap: 16px;
+  }
+  .digit-b {
+    display: grid;
+    grid-template-columns: repeat(4, 16px);
+    grid-template-rows: repeat(6, 16px);
+    gap: 2px;
+  }
+  .clock-b {
+    width: 16px;
+    height: 16px;
+    position: relative;
+  }
+  .hour-b, .minute-b {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform-origin: bottom center;
+    background: white;
+    border-radius: 1px;
+    /* ✨ 弹性曲线 */
+    transition: transform 0.7s cubic-bezier(0.22, 1.55, 0.45, 1);
+  }
+  .hour-b {
+    width: 2px;
+    height: 40%;
+  }
+  .minute-b {
+    width: 1px;
+    height: 55%;
+  }
+
+  /* === 版本 C: 分段跳动 === */
+  .app-c {
+    display: flex;
+    gap: 16px;
+  }
+  .digit-c {
+    display: grid;
+    grid-template-columns: repeat(4, 16px);
+    grid-template-rows: repeat(6, 16px);
+    gap: 2px;
+  }
+  .clock-c {
+    width: 16px;
+    height: 16px;
+    position: relative;
+  }
+  .hour-c, .minute-c {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform-origin: bottom center;
+    background: white;
+    border-radius: 1px;
+    transition: transform 0.7s steps(4, end);
+  }
+  .hour-c {
+    width: 2px;
+    height: 40%;
+  }
+  .minute-c {
+    width: 1px;
+    height: 55%;
+  }
+  /* === 版本 D: 发光 === */
+  .app-d {
+    display: flex;
+    gap: 20px;
+  }
+  .digit-d {
+    display: grid;
+    grid-template-columns: repeat(4, 18px);
+    grid-template-rows: repeat(6, 18px);
+    gap: 3px;
+  }
+  .clock-d {
+    width: 18px;
+    height: 18px;
+    position: relative;
+    border-radius: 50%;
+    background: radial-gradient(circle at center, rgba(60, 200, 255, 0.15), rgba(20, 50, 90, 0.05));
+    box-shadow: 0 0 4px rgba(100, 200, 255, 0.3);
+  }
+
+  .hour-d, .minute-d {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform-origin: bottom center;
+    border-radius: 2px;
+    filter: drop-shadow(0 0 3px rgba(120, 200, 255, 0.7));
+    transition: transform 1s cubic-bezier(0.3, 1.2, 0.4, 1);
+  }
+  .hour-d {
+    width: 3px;
+    height: 45%;
+    background: rgba(80, 200, 255, 0.8);
+  }
+  .minute-d {
+    width: 2px;
+    height: 65%;
+    background: rgba(150, 255, 255, 0.9);
+  }
+</style>
+</head>
+<body>
+
+<div class="clock-row">
+  <h2>普通过渡版</h2>
+  <div class="app-a" id="app-a"></div>
+</div>
+
+<div class="clock-row">
+  <h2>弹性摆动版</h2>
+  <div class="app-b" id="app-b"></div>
+</div>
+
+<div class="clock-row">
+  <h2>分段跳动版</h2>
+  <div class="app-c" id="app-c"></div>
+</div>
+
+<div class="clock-row">
+  <h2>发光版</h2>
+  <div class="app-d" id="app-d"></div>
+</div>
+
+<script>
+/* ========= 通用配置 ========= */
+const H  = { h: 270,   m: 90 },
+      V  = { h: 0, m:180 },
+      TL = { h: 0, m: 270 },
+      TR = { h: 0,   m: 90 },
+      BL = { h: 270, m: 180 },
+      BR = { h: 180,   m: 90 },
+      E  = { h: 225, m: 225 };
+
+const digits = [
+  [BR,H,H,BL, V,BR,BL,V, V,V,V,V, V,V,V,V, V,TR,TL,V, TR,H,H,TL],
+  [BR,H,BL,E, TR,BL,V,E, E,V,V,E, E,V,V,E, BR,TL,TR,BL, TR,H,H,TL],
+  [BR,H,H,BL, TR,H,BL,V, BR,H,TL,V, V,BR,H,TL, V,TR,H,BL, TR,H,H,TL],
+  [BR,H,H,BL, TR,H,BL,V, E,BR,TL,V, E,TR,BL,V, BR,H,TL,V, TR,H,H,TL],
+  [BR,BL,BR,BL, V,V,V,V, V,TR,TL,V, TR,H,BL,V, E,E,V,V, E,E,TR,TL],
+  [BR,H,H,BL, V,BR,H,TL, V,TR,H,BL, TR,H,BL,V, BR,H,TL,V, TR,H,H,TL],
+  [BR,H,H,BL, V,BR,H,TL, V,TR,H,BL, V,BR,BL,V, V,TR,TL,V, TR,H,H,TL],
+  [BR,H,H,BL, TR,H,BL,V, E,E,V,V, E,E,V,V, E,E,V,V, E,E,TR,TL],
+  [BR,H,H,BL, V,BR,BL,V, V,TR,TL,V, V,BR,BL,V, V,TR,TL,V, TR,H,H,TL],
+  [BR,H,H,BL, V,BR,BL,V, V,TR,TL,V, TR,H,BL,V, BR,H,TL,V, TR,H,H,TL]
+];
+
+const normalizeAngle = (next, prev) => {
+  let target = next;
+  while (target < prev) target += 360;
+  return target;
+};
+
+const getTimeDigits = () => {
+  const now = new Date();
+  return [
+    now.getHours(),
+    now.getMinutes(),
+    now.getSeconds()
+  ].flatMap(v => String(v).padStart(2,"0").split("").map(Number));
+};
+
+/* ========= 工具函数 ========= */
+function makeClockSet(prefix, containerId, transitionDur) {
+  const app = document.getElementById(containerId);
+  let prevAngles = Array(6*24).fill({h: Math.random()*360, m: Math.random()*360});
+  let hourHands = [];
+  let minuteHands = [];
+
+  function createClock() {
+    const clock = document.createElement("div");
+    clock.className = `clock-${prefix}`;
+
+    const hour = document.createElement("div");
+    const minute = document.createElement("div");
+    hour.className = `hour-${prefix}`;
+    minute.className = `minute-${prefix}`;
+
+    // 初始随机角度
+    hour.style.transform = `translate(-50%, -100%) rotate(${Math.random()*360}deg)`;
+    minute.style.transform = `translate(-50%, -100%) rotate(${Math.random()*360}deg)`;
+
+    clock.appendChild(hour);
+    clock.appendChild(minute);
+    return {clock, hour, minute};
+  }
+
+  function initClocks() {
+    const time = getTimeDigits();
+    time.forEach(num => {
+      const digitEl = document.createElement("div");
+      digitEl.className = `digit-${prefix}`;
+
+      digits[num].forEach(() => {
+        const {clock, hour, minute} = createClock();
+        digitEl.appendChild(clock);
+        hourHands.push(hour);
+        minuteHands.push(minute);
+      });
+
+      app.appendChild(digitEl);
+    });
+  }
+
+  function updateClocks() {
+    const time = getTimeDigits();
+    time.forEach((num, i) => {
+      digits[num].forEach(({h,m}, j) => {
+        const idx = i*24 + j;
+        const prev = prevAngles[idx];
+        const newH = normalizeAngle(h, prev.h);
+        const newM = normalizeAngle(m, prev.m);
+        prevAngles[idx] = {h: newH, m: newM};
+
+        hourHands[idx].style.transform = `translate(-50%, -100%) rotate(${newH}deg)`;
+        minuteHands[idx].style.transform = `translate(-50%, -100%) rotate(${newM}deg)`;
+      });
+    });
+  }
+
+  initClocks();
+  setTimeout(() => {
+    updateClocks();
+    setInterval(updateClocks, 1000);
+  }, 600);
+}
+
+/* === 初始化两个版本 === */
+makeClockSet("a", "app-a");
+makeClockSet("b", "app-b");
+makeClockSet("c", "app-c");
+makeClockSet("d", "app-d");
+</script>
+</body>
+</html>

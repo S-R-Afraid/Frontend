@@ -1,0 +1,490 @@
+{
+    "start": {
+        "image": "塞小林.jpg",
+        "text": "系统初始化……[OK]\\. \n时间同步……[OK]\\. \n意识载入…… \\C[#0f0]{成功}。\\.\\. \n\n你猛地吸了一口冷空气。你的眼皮像是从数十年的沉眠中被撬开。\n\n这里是 \\_{深界监听站 Delta-12}。\n周围是一片昏暗的金属舱室，只有心跳一样的蓝光在墙壁上脉动。\n\n但不对劲。\n你听到另一条心跳——不是你的。",
+        "options": [
+            {
+                "text": "查看自身状态",
+                "nextNode": "self_check"
+            },
+            {
+                "text": "搜索舱室来源",
+                "nextNode": "room_scan"
+            }
+        ]
+    },
+    "self_check": {
+        "text": "自检程序启动……\\.\\. \n\n你的神经植入显示：\n- 身份编号：\\_{Δ-12-Ω}\n- 最近一次意识写入：\\_{187 小时前}\n- 记忆碎片：\\-{99%缺损}\n- 神经稳定度：\\C[red]{危急}\n\n最后一项闪烁着红色提示：\n“检测到 \\C[#f00]{外源意识干扰}。”",
+        "options": [
+            {
+                "text": "尝试隔离外源意识",
+                "nextNode": "isolate_intruder"
+            },
+            {
+                "text": "忽略告警，继续执行任务",
+                "nextNode": "mission_intro"
+            }
+        ]
+    },
+    "room_scan": {
+        "text": "你环顾监听站舱室。\n\n1. 地板上有一道拖痕，似乎是什么东西被 \\_{拖走}。\n2. 一台闪烁着黄光的记忆注入器，里面插着一张未知的神经芯片。\n3. 门边的墙壁上刻着一行字：\n   “\\-{它在听。不要说话。}”",
+        "options": [
+            {
+                "text": "检查拖痕",
+                "nextNode": "trail"
+            },
+            {
+                "text": "取出神经芯片",
+                "nextNode": "chip_slot"
+            },
+            {
+                "text": "研究墙上的刻字",
+                "nextNode": "wall_msg"
+            }
+        ]
+    },
+    "trail": {
+        "text": "你弯下身，用手指轻触那道被 _{拖走} 留下的痕迹。\\.\n金属地板上有微弱的擦划痕，间隔均匀——像是某个重量不轻的物体被迅速拖动。\n\n痕迹延伸到舱室角落的一道通风口前。\n\n通风口盖板微微翘起，里面吹出一阵冰冷的气流。你能听见深处传来若有若无的……呼吸声。",
+        "options": [
+            {
+                "text": "掀开通风口，爬进去",
+                "nextNode": "vent_crawl"
+            },
+            {
+                "text": "不对劲，回到舱室继续调查",
+                "nextNode": "room_scan"
+            }
+        ]
+    },
+    "vent_crawl": {
+        "text": "你抓住通风口的边缘，将盖板轻轻拉开。\\.\n冰冷的风像刀子一样刮过你的脸。\n\n你爬进狭窄的通道，金属管壁反射着你急促的呼吸。爬行数米后，你看到前方有微弱的红光在闪烁。\n\n那是一只滴着冷凝水的防污染手套。\n尺寸与你的手……完全一致。",
+        "options": [
+            {
+                "text": "继续前进",
+                "nextNode": "vent_deeper"
+            },
+            {
+                "text": "立刻撤回",
+                "nextNode": "room_scan"
+            }
+        ]
+    },
+    "vent_deeper": {
+        "text": "你继续向前。通道突然变得潮湿，甚至有些温热。\\.\n你的手指碰到某种柔软、有弹性的表面——\n\n那不是金属。\n那是一团肉质组织，正轻微地……搏动。\n\n你意识到：这个“通风管道”并不是机械结构的一部分。\n也许从来就不是。",
+        "options": [
+            {
+                "text": "触碰那团肉质组织",
+                "nextNode": "flesh_contact"
+            },
+            {
+                "text": "忍住恐惧，迅速返回",
+                "nextNode": "room_scan"
+            }
+        ]
+    },
+    "flesh_contact": {
+        "text": "你试探性地按在那团肉组织上。\\.\n它立刻做出反应。\n像是察觉到了你，它骤然收缩——整个通道随之颤动。\n\n然后你听见：\n\\C[red]{“……找到你了。”}\n\n声音不是从前方传来的，而是从你的神经植入内部传来的。",
+        "options": [
+            {
+                "text": "尖叫并逃离通道",
+                "nextNode": "room_scan"
+            },
+            {
+                "text": "回应：你是谁？",
+                "nextNode": "intruder_talk"
+            }
+        ]
+    },
+    "chip_slot": {
+        "text": "你走向那台闪烁着黄光的记忆注入器。\\.\n机器外壳上覆盖着老旧灰尘，但芯片槽却异常干净。\n\n你拔出那张未知的神经芯片。\n芯片的背面被刻上了一行极细的小字：\n\n\\C[#0ff]{“Δ-12 号意识备份：版本 0.7 / 禁止载入”}\n\n这上面写的是你的编号。",
+        "options": [
+            {
+                "text": "将芯片插入自己的神经接口",
+                "nextNode": "chip_upload"
+            },
+            {
+                "text": "在注入器上读取芯片内容",
+                "nextNode": "chip_read"
+            },
+            {
+                "text": "把芯片摔碎（直觉告诉你很危险）",
+                "nextNode": "chip_break"
+            }
+        ]
+    },
+    "chip_upload": {
+        "text": "你将神经芯片稳稳扣入后颈的接口。\\.\n片刻安静。\n\n然后——\n一股冷风般的信息流灌入你的大脑。\n大量影像闪过：破碎的监听站、深界裂隙、你自己被刺穿的身体……\n\n最后，一句提示在你脑海中回荡：\n\n\\C[red]{“你并不是第一次醒来。”}",
+        "options": [
+            {
+                "text": "继续追溯记忆",
+                "nextNode": "memory_depth"
+            },
+            {
+                "text": "立即拔出芯片",
+                "nextNode": "room_scan"
+            }
+        ]
+    },
+    "chip_read": {
+        "text": "你将芯片插回注入器并选择“只读模式”。\\. \n\n屏幕闪烁。\n\n> 载入文件：Δ-12-BACKUP-0.7\n> 状态：\\C[red]{严重污染}\n\n一段音频自动播放：\n“……听我说，不要相信墙上写的那句话。不是‘它’在听……是你。”",
+        "options": [
+            {
+                "text": "继续播放",
+                "nextNode": "chip_play2"
+            },
+            {
+                "text": "立刻停止读取",
+                "nextNode": "room_scan"
+            }
+        ]
+    },
+    "chip_play2": {
+        "text": "音频继续：\n“我们——你——正在分裂。你以为你醒着，但其实你一直在别人的梦里。”\\. \n\n信息戛然而止，屏幕弹出最终提示：\n\n\\C[#0ff]{“备份建议：强制融合。”}",
+        "options": [
+            {
+                "text": "执行融合协议",
+                "nextNode": "ending_merge"
+            },
+            {
+                "text": "拒绝并退出",
+                "nextNode": "room_scan"
+            }
+        ]
+    },
+    "chip_break": {
+        "text": "你将芯片举在手中。\n它比看起来更沉，像是装着某种不愿被释放的东西。\n\n“别这样……”\\. \n一个微弱的人声从芯片内部传来。\n\n那是你的声音。",
+        "options": [
+            {
+                "text": "摧毁它",
+                "nextNode": "chip_destroyed"
+            },
+            {
+                "text": "吓得把芯片丢回机器",
+                "nextNode": "room_scan"
+            }
+        ]
+    },
+    "chip_destroyed": {
+        "text": "你用力掰断芯片。\n\n啪——\n像是某个意识被折断的声音。\n\n你的大脑深处突然安静得可怕。\n\n你意识到：\n你刚刚杀死了某个版本的自己。",
+        "options": [
+            {
+                "text": "接受这个事实并继续探索",
+                "nextNode": "room_scan"
+            },
+            {
+                "text": "恐惧占据心头，前往记忆舱确认真相",
+                "nextNode": "vault_entrance"
+            }
+        ]
+    },
+    "wall_msg": {
+        "text": "你走到墙边。\n那行字用金属尖端刻出：\n\n“\\-{它在听。不要说话。}”\n\n你注意到刻痕边缘并非氧化，而是……\n像是被什么高温烤焦过。\n\n就在你盯着那几个字的时候，它们突然轻微发光。",
+        "options": [
+            {
+                "text": "触摸刻字",
+                "nextNode": "wall_touch"
+            },
+            {
+                "text": "后退，尝试用扫描仪分析",
+                "nextNode": "wall_scan"
+            },
+            {
+                "text": "忽略它，继续查看其他物品",
+                "nextNode": "room_scan"
+            }
+        ]
+    },
+    "wall_touch": {
+        "text": "你的指尖轻轻触碰刻字。\n金属瞬间像活物一样蠕动。\\. \n你看到另一句隐藏信息从金属深处显现：\n\n\\C[#0ff]{“不是它在听，是你在被听。”}\n\n你的耳边随即响起细微的窃窃私语声。\n无数声音在你的神经中低语：\n“我们看着你很久了……”",
+        "options": [
+            {
+                "text": "大喊让它们闭嘴",
+                "nextNode": "intruder_purge"
+            },
+            {
+                "text": "强撑冷静：你们是谁？",
+                "nextNode": "intruder_talk"
+            }
+        ]
+    },
+    "wall_scan": {
+        "text": "你打开腕部扫描仪，对刻字进行物质分析。\\. \n\n扫描结果：\n- 材质：合金层表皮\n- 热变形：不自然，可能由 \\C[red]{生物体温度} 造成\n- 显示：刻字时间 < 12 分钟前\n\n也就是说……\n刚才在你醒来之前，某个“人”或“东西”就在这里。",
+        "options": [
+            {
+                "text": "查看附近监控",
+                "nextNode": "logs"
+            },
+            {
+                "text": "立即离开舱室",
+                "nextNode": "vault_entrance"
+            }
+        ]
+    },
+    "mission_intro": {
+        "text": "你调出系统指令。\\. \n\n\\C[#0f0]{主任务：} 监听深界信号，确认异常波动源头。\n\\C[#0f0]{限制条件：} 不得主动与深界意识接触。\n\n然而，屏幕角落闪烁着隐蔽提示：\n\\C[red]{你的任务已被第三方修改。}",
+        "options": [
+            {
+                "text": "查看被修改后的指令",
+                "nextNode": "modified_mission"
+            },
+            {
+                "text": "尝试恢复原始指令",
+                "nextNode": "restore_mission"
+            }
+        ]
+    },
+    "isolate_intruder": {
+        "text": "你启动神经防火墙。\\.\\. \n一股剧烈的头痛瞬间击中你。\n\n然后……一个声音出现了。\n\n“……别动。”\\. \n“如果你隔离我，我们俩都会死。”",
+        "options": [
+            {
+                "text": "回应：你是谁？",
+                "nextNode": "intruder_talk"
+            },
+            {
+                "text": "继续隔离程序",
+                "nextNode": "intruder_purge"
+            }
+        ]
+    },
+    "intruder_talk": {
+        "text": "“我？”\\. 声音带着你的口音。\n“我是你未来 187 小时后的意识备份。”\n\n“监听站……已经沦陷。你不能再信任任何系统。”\n\n你的视网膜突然闪烁出一句陌生字符：\n\\C[red]{WAKE PROTOCOL = DISABLED}",
+        "options": [
+            {
+                "text": "要求他证明身份",
+                "nextNode": "proof"
+            },
+            {
+                "text": "选择相信",
+                "nextNode": "trust_intruder"
+            }
+        ]
+    },
+    "intruder_purge": {
+        "text": "你强行隔离外源意识。\n\n痛觉达到阈值上限。\\.\\. \n你听见某种东西在脑内尖叫——或者那是你自己。\n\n然后一切安静下来。\n\n系统提示：\n\\C[#0f0]{外源意识：清除成功。}\n\n但你突然忘记了自己为何要这么做。",
+        "options": [
+            {
+                "text": "继续任务（神志恍惚）",
+                "nextNode": "mission_intro"
+            },
+            {
+                "text": "查看最近的系统日志",
+                "nextNode": "deep_logs"
+            }
+        ]
+    },
+    "proof": {
+        "text": "“你要证据？”\\. \n\n你的脑中浮现出一段画面——你从未见过，却又异常熟悉：\n\n你站在监听站外的大气裂隙边缘，背景是翻腾的 \\C[#888]{深界云海}。\n你对着摄像头说：\n\n“如果你看到这段影像，说明 \\_{我们失败了}。”",
+        "options": [
+            {
+                "text": "继续听他说",
+                "nextNode": "trust_intruder"
+            },
+            {
+                "text": "认为这是伪造影像",
+                "nextNode": "reject_intruder"
+            }
+        ]
+    },
+    "trust_intruder": {
+        "text": "“好，你选择了正确的一步。”\\. \n“现在，去找监听站的 \\_{核心记忆舱}。那里藏着你真正的任务。”\n\n你的脑海浮现出一个被锁住的舱门图像，门上写着：\n\\C[red]{MEMORY VAULT - LEVEL S}",
+        "options": [
+            {
+                "text": "前往核心记忆舱",
+                "nextNode": "vault_entrance"
+            },
+            {
+                "text": "反悔，先检查舱室其他地方",
+                "nextNode": "room_scan"
+            }
+        ]
+    },
+    "reject_intruder": {
+        "text": "“你……怎么还不明白？”\\. \n声音开始扭曲。\n“你以为你在拒绝我？你在拒绝自己。”\n\n你的视野猝然变黑。\n\n再亮起时，你发现自己站在舱室中央。你不记得刚才发生了什么。",
+        "options": [
+            {
+                "text": "检查系统异常",
+                "nextNode": "mission_intro"
+            },
+            {
+                "text": "查看记忆注入器",
+                "nextNode": "chip_slot"
+            }
+        ]
+    },
+    "deep_logs": {
+        "text": "[日志 551]：深界的低语开始影响工作人员。\\. \n[日志 552]：Δ-11 号听到了“自己的声音”。\n[日志 555]：Δ-12（你）申请记忆重置。\n[日志 556]：重置失败。原因：\\C[red]{外源意识植入}。\n\n最后一条日志后，还有一句系统注释：\n“\\-{此个体不可控。准备销毁。}”",
+        "options": [
+            {
+                "text": "尽快离开这里",
+                "nextNode": "vault_entrance"
+            },
+            {
+                "text": "继续调查",
+                "nextNode": "room_scan"
+            }
+        ]
+    },
+    "modified_mission": {
+        "text": "你打开被篡改后的指令。\n\n屏幕上，只有一行巨大的红字：\n\n\\C[red]{找到你自己的尸体。}",
+        "options": [
+            {
+                "text": "难以置信，继续查看细节",
+                "nextNode": "body_location"
+            },
+            {
+                "text": "立即关闭屏幕",
+                "nextNode": "mission_intro"
+            }
+        ]
+    },
+    "restore_mission": {
+        "text": "你试图重写指令，但系统不断弹出阻断警告：\n\n“深界协议锁定中。”\n“权限提升失败。”\n“外部进程正在覆盖你的操作。”\\. \n\n你的终端突然出现一个陌生进程：\n\n\\_{SLEEPLESS.EXE}",
+        "options": [
+            {
+                "text": "尝试终止进程",
+                "nextNode": "kill_process"
+            },
+            {
+                "text": "运行该进程",
+                "nextNode": "run_sleepless"
+            }
+        ]
+    },
+    "kill_process": {
+        "text": "你强制终止 SLEEPLESS.EXE。\n\n它反弹：\\C[red]{反入侵攻击}。\n你的意识短暂离线 0.6 秒。\\. \n\n重新上线后，屏幕上出现一句话：\n\n“\\_{你不能杀死一个没睡过的人。}”",
+        "options": [
+            {
+                "text": "惊恐地继续任务",
+                "nextNode": "mission_intro"
+            }
+        ]
+    },
+    "run_sleepless": {
+        "text": "你运行了 SLEEPLESS.EXE。\\. \n\n一段影像流入你的视觉：\n你正躺在监听站的冷冻仓里。肋骨全部裂开。\n\n影像旁出现一串坐标。\n“那是你的尸体的位置。”",
+        "options": [
+            {
+                "text": "前往坐标",
+                "nextNode": "body_location"
+            },
+            {
+                "text": "拒绝相信，离开终端",
+                "nextNode": "room_scan"
+            }
+        ]
+    },
+    "body_location": {
+        "text": "你沿着监听站内部的暗廊前进。\\. \n墙壁不断发出低沉的呼吸声。\n\n在一扇紧急封锁门后，你看到了——\n\n一个冷冻仓。\n仓内躺着……你。\n同样的面孔，同样的植入编号。\n胸腔完全裂开，像被什么东西从内侧撑爆。",
+        "options": [
+            {
+                "text": "打开冷冻仓",
+                "nextNode": "open_body"
+            },
+            {
+                "text": "立刻逃跑",
+                "nextNode": "run_away"
+            }
+        ]
+    },
+    "open_body": {
+        "text": "你颤抖着打开冷冻仓。\n\n你的“尸体”突然抽动。\\. \n眼睛猛地睁开。\\. \n那不是你自己的眼睛——而是 \\C[#0ff]{深界之光}。\n\n它用你的声音说：\n“终于找到你了……真正的我。”",
+        "options": [
+            {
+                "text": "接受融合",
+                "nextNode": "ending_merge"
+            },
+            {
+                "text": "拒绝，拔出生命维持线",
+                "nextNode": "ending_silence"
+            }
+        ]
+    },
+    "run_away": {
+        "text": "你拼命逃离。金属走廊在你脚下延伸，又似乎在收缩。\n\n你知道一件事：\n不管那是不是你的尸体，你都不可能回到从前。",
+        "options": [
+            {
+                "text": "前往核心记忆舱",
+                "nextNode": "vault_entrance"
+            }
+        ]
+    },
+    "vault_entrance": {
+        "text": "你抵达了监听站最深处。\n\n一扇厚重的钛合金门上写着：\n\\C[#0ff]{MEMORY VAULT - LEVEL S}\n\n门旁的屏幕显示：\n“需要双重意识验证。”",
+        "options": [
+            {
+                "text": "让外源意识协助验证",
+                "nextNode": "vault_open_with_intruder"
+            },
+            {
+                "text": "自行尝试破解",
+                "nextNode": "vault_hack"
+            }
+        ]
+    },
+    "vault_open_with_intruder": {
+        "text": "你的脑中响起熟悉的声音：\n“准备好了吗？我们要一起进去。”\\. \n\n你伸手触碰门锁。外源意识同步了你的脑波。\n\n门缓缓打开。里面是无限堆叠的记忆光立方。\n\n你看到你的真实身份：\n你不是监听员。\n你是深界引路人，被封印在这座监听站。\n你的每一段“记忆”都是被人为编写的。",
+        "options": [
+            {
+                "text": "接受全部记忆",
+                "nextNode": "ending_truth"
+            },
+            {
+                "text": "拒绝，被迫关闭记忆舱",
+                "nextNode": "ending_fall"
+            }
+        ]
+    },
+    "vault_hack": {
+        "text": "你尝试破解安全锁。\\. \n系统计时器开始倒数：10… 9… 8…\n\n倒数归零的一瞬间——\n门猛地打开。\n\n但门内是一片刺目的白光。\n你感到自己的意识像纸一样被撕开。",
+        "options": [
+            {
+                "text": "[ 信号断裂 ]",
+                "nextNode": "ending_white"
+            }
+        ]
+    },
+    "ending_merge": {
+        "text": "你停止挣扎。\n你伸手触碰那具胸腔裂开的“你”。\\. \n\n瞬间，你的意识与它融合。\n你知道了深界的一切。\n你成为了深界的“门”。\n\n监听站自动关闭，准备迎接下一位来访者。\n\n\\C[#0ff]{[ ENDING：THE GATEKEEPER ]}",
+        "options": [
+            {
+                "text": "重新开始",
+                "nextNode": "start"
+            }
+        ]
+    },
+    "ending_silence": {
+        "text": "你猛地拔掉生命维持线。\n\n尸体——或者那个东西——彻底沉寂。\n整个监听站也随之静止，像是连空气都被冻结了。\n\n你独自站在深界的寂静中。\n无人知晓你的命运。\n\n\\C[#888]{[ ENDING：THE QUIET ONE ]}",
+        "options": [
+            {
+                "text": "重新启动系统",
+                "nextNode": "start"
+            }
+        ]
+    },
+    "ending_truth": {
+        "text": "你允许记忆立方流入你的神经。\n\n“你”的千百个版本同时在你脑中重叠。\n你看见所有过去、现在与未来。\n\n你不是一个人。\n你是整个监听站。\n你是深界本身的回声。\n\n\\C[#0f0]{[ ENDING：THE AWAKENED ]}",
+        "options": [
+            {
+                "text": "再次轮回",
+                "nextNode": "start"
+            }
+        ]
+    },
+    "ending_fall": {
+        "text": "你拒绝了真相。\n记忆舱关闭。\n整个监听站开始坍塌。\n你失去了所有身份、任务、目的。\n\n你掉落进无止境的深渊。\n\n\\C[red]{[ ENDING：THE FALLEN ]}",
+        "options": [
+            {
+                "text": "重启模拟",
+                "nextNode": "start"
+            }
+        ]
+    },
+    "ending_white": {
+        "text": "白光吞没了你。\\. \n你的意识被重写。\n\n系统提示：\n“Δ-12 号监听员重新格式化成功。”\\. \n“新意识载入开始……”\\. \n\n但你知道——在格式化之前，你曾经试图醒来。\n\n\\C[#fff]{[ ENDING：THE BLANK ]}",
+        "options": [
+            {
+                "text": "重新启动",
+                "nextNode": "start"
+            }
+        ]
+    }
+}

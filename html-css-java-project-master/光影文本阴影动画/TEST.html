@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>光影文本阴影动画（独立封装版）</title>
+<style>
+/* ========== 封装作用域：仅限 .shadow-text-demo ========== */
+.light-text-scene {
+    position: relative;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    background: #333;
+    overflow: hidden;
+}
+
+.light-text-scene * {
+    box-sizing: border-box;
+}
+
+.light-text-scene #text {
+    position: relative;
+    color: #fff;
+    font-size: 10em;
+    font-weight: bold;
+    cursor: default;
+    user-select: none;
+    text-align: center;
+}
+
+.light-text-scene #light {
+    position: absolute;
+    transform: translate(-50%, -50%);
+    width: 50px;
+    height: 50px;
+    background: #fff;
+    border-radius: 50%;
+    box-shadow:
+        0 0 15px #fff,
+        0 0 50px #fff,
+        0 0 100px #fff,
+        0 0 200px #fff,
+        0 0 300px #fff;
+    pointer-events: none;
+}
+
+/* 可选：暗色页面背景与其他元素的区别 */
+.page-other-content {
+  background: #eee;
+  color: #333;
+  text-align: center;
+  padding: 2em;
+  font-family: system-ui, sans-serif;
+}
+</style>
+</head>
+<body>
+  <!-- 独立的光影文字动画模块 -->
+<div class="light-text-scene">
+  <div id="text">Shadow</div>
+  <div id="light"></div>
+</div>
+
+  <!-- 页面其他内容（不会受影响） -->
+  <div class="page-other-content">
+    <h2>这里是其他页面内容</h2>
+    <p>上方动画已封装，不会影响全局布局或样式。</p>
+  </div>
+
+  <script>
+    const container = document.querySelector('.light-text-scene');
+    const text = container.querySelector('#text');
+    const light = container.querySelector('#light');
+
+    container.addEventListener('mousemove', (event) => {
+      const rect = container.getBoundingClientRect();
+      const mouseX = event.clientX - rect.left;
+      const mouseY = event.clientY - rect.top;
+
+      // 移动光源
+      light.style.left = mouseX + 'px';
+      light.style.top = mouseY + 'px';
+
+      // 计算文字阴影偏移
+      const distanceX = mouseX - text.offsetLeft - text.offsetWidth / 2;
+      const distanceY = mouseY - text.offsetTop - text.offsetHeight / 2;
+
+      let newShadow = '';
+      for (let i = 0; i < 200; i++) {
+        const shadowX = -distanceX * (i / 200);
+        const shadowY = -distanceY * (i / 200);
+        const opacity = 1 - (i / 100);
+        newShadow += `${newShadow ? ',' : ''}${shadowX}px ${shadowY}px 0 rgba(33,33,33,${opacity})`;
+      }
+      text.style.textShadow = newShadow;
+    });
+  </script>
+</body>
+</html>

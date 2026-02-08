@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="zh">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Minimal Dungeon Display</title>
+    <style>
+        body {
+            background-color: #121212;
+            color: #e0e0e0;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
+            justify-content: center;
+            align-items: flex-start;
+            font-family: sans-serif;
+        }
+
+        /* 纯净的容器样式 */
+        .dungeon-widget {
+            background: #000;
+            border-radius: 4px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+            /* 可以在这里控制卡片大小 */
+            width: 400px;
+            height: 300px;
+            position: relative;
+            overflow: hidden;
+            border: 1px solid #333;
+            transition: border-color 0.3s, transform 0.2s;
+            cursor: pointer;
+        }
+
+        .dungeon-widget:hover {
+            border-color: #666;
+            transform: translateY(-2px);
+        }
+
+        /* 标题浮层 (可选，为了区分不同实例) */
+        .widget-label {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            background: rgba(0, 0, 0, 0.7);
+            color: #888;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            pointer-events: none;
+            /* 让点击穿透到 canvas */
+            z-index: 10;
+        }
+
+        .canvas-container {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        canvas {
+            image-rendering: pixelated;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div id="app-container" style="display:contents;"></div>
+
+    <script src="多实例迷宫生成脚本.js">    </script>
+    <script>
+
+        // ==========================================
+        // 实例化展示
+        // ==========================================
+        const container = document.getElementById('app-container');
+
+        // 1. 标准配置
+        // 展示最平衡的参数设置
+        new DungeonWidget(container, {
+            title: "标准地牢 (Standard)",
+            width: 61,             // 地图宽度 (建议奇数)
+            height: 41,            // 地图高度 (建议奇数)
+            speed: 5,              // 动画延迟 (ms)，越小越快
+            attempts: 200,         // 放置房间的尝试次数
+            roomChance: 5,         // 房间回路概率 (0-100%)：房间生成额外出口的几率
+            corrChance: 20,        // 走廊回路概率 (0-100%)：走廊生成捷径的几率
+            removeDeadEnds: true,   // 是否移除死胡同：true=移除(更整洁), false=保留(更像迷宫)
+            instant: true,
+            targetStage: 4, 
+        });
+
+        // 2. 巨型地图 (高尝试次数)
+        // 演示大尺寸地图和高密度房间
+        new DungeonWidget(container, {
+            title: "巨型 & 极速 (Giant)",
+            width: 101,
+            height: 81,
+            speed: 0,              // 0 = 极速模式，几乎无延迟
+            attempts: 500,         // 尝试放置更多房间
+            roomChance: 10,        // 稍微增加房间的连通性
+            corrChance: 20,        // 保持默认的走廊连通性
+            removeDeadEnds: true,
+            instant: true,
+            targetStage: 4, 
+        });
+
+        // 3. 高密度回路 (瑞士奶酪风格)
+        // 演示高连通性，地图四通八达
+        new DungeonWidget(container, {
+            title: "高回路密度 (Loops)",
+            width: 61,             // 地图宽度 (建议奇数)
+            height: 41,            // 地图高度 (建议奇数)
+            speed: 5,              // 动画延迟 (ms)，越小越快
+            attempts: 200,         // 放置房间的尝试次数
+            roomChance: 100,         // 房间回路概率 (0-100%)：房间生成额外出口的几率
+            corrChance: 100,        // 走廊回路概率 (0-100%)：走廊生成捷径的几率
+            removeDeadEnds: true,   // 是否移除死胡同：true=移除(更整洁), false=保留(更像迷宫)
+            instant: false,
+            targetStage: 4, 
+            maxRoomDoors: 200, 
+        });
+
+        // 4. 保留死胡同 (更像迷宫)
+        // 演示不修剪死胡同的效果，分支非常多
+        new DungeonWidget(container, {
+            title: "无修剪迷宫 (Mazey)",
+            width: 51,
+            height: 51,
+            speed: 10,
+            attempts: 200,
+            roomChance: 5,
+            corrChance: 20,
+            removeDeadEnds: false  // 关键差异：保留死路
+        });
+    </script>
+</body>
+
+</html>

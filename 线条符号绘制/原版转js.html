@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Vanilla JS Grid Symmetry</title>
+    <style>
+        html,
+        body {
+            margin: 0;
+            padding: 0;
+            background: #121212;
+            overflow: hidden;
+        }
+
+        canvas {
+            display: block;
+        }
+    </style>
+</head>
+
+<body>
+
+    <canvas id="canvas"></canvas>
+
+    <script>
+        /* =========================
+           全局配置
+        ========================= */
+
+        const P = {
+            tiles: 5,
+            padding: 0.2,
+            edgesMax: 15,
+            edgesAttempts: 20,
+            edgesBreak: 4,
+            innerGrid: 3,
+            startPoint: [1, 1],
+            symmetry: 'reflect' // 'reflect' | 'rotate'
+        }
+
+        /* =========================
+           Canvas 初始化
+        ========================= */
+
+        const canvas = document.getElementById('canvas')
+        const ctx = canvas.getContext('2d')
+
+        function resize() {
+            canvas.width = window.innerWidth
+            canvas.height = window.innerHeight
+            draw()
+        }
+
+        window.addEventListener('resize', resize)
+        canvas.addEventListener('mousedown', regenerate)
+
+        /* =========================
+           工具函数
+        ========================= */
+
+        function random(arr) {
+            return arr[Math.floor(Math.random() * arr.length)]
+        }
+
+        /* =========================
+           路径生成逻辑
+        ========================= */
+
+        const directions = [
+            [1, 0],
+            [0, -1],
+            [0, 1],
+            [-1, 0],
+        ]
+
+        function getPoints() {
+            let [x, y] = P.startPoint
+            let points = [[x, y]]
+            let edges = {}
+
+            const xMax = P.innerGrid
+            const yMax = P.innerGrid
+
+            function getEdges(x, y) {
+                const key = `${x}-${y}`
+                if (!edges[key]) edges[key] = []
+                return edges[key]
+            }
+
+            let i = 0
+            let pointsCount = 0
+            let needToPushPoint1 = false
+
+            while (i < P.edgesAttempts && pointsCount < P.edgesMax) {
+                const visited = getEdges(x, y)
+
+                const options = directions.filter(([dx, dy]) => {
+                    const nx = x + dx
+                    const ny = y + dy
+                    if (nx < 0 || nx > xMax) return false
+                    if (ny < 0 || ny > yMax) return false
+                    if (visited.find(([vx, vy]) => vx === nx && vy === ny)) return false
+                    return true
+                })
+
+                // 无路可走：断笔并跳点
+                if (options.length === 0) {
+                    points.push(false)
+                    x = Math.floor(Math.random() * (xMax + 1))
+                    y = Math.floor(Math.random() * (yMax + 1))
+                    points.push([x, y])
+                    i++
+                    continue
+                }
+
+                // break 后补起点
+                if (needToPushPoint1) {
+                    points.push([x, y])
+                    needToPushPoint1 = false
+                    pointsCount++
+                }
+
+                const prevX = x
+                const prevY = y
+
+                const [dx, dy] = random(options)
+                x += dx
+                y += dy
+
+                visited.push([x, y])
+                getEdges(x, y).push([prevX, prevY])
+
+                points.push([x, y])
+                pointsCount++
+                i++
+
+                if (i % P.edgesBreak === 0) {
+                    points.push(false)
+                    x = Math.floor(Math.random() * (xMax + 1))
+                    y = Math.floor(Math.random() * (yMax + 1))
+                    needToPushPoint1 = true
+                }
+            }
+
+            return points
+        }
+
+        /* =========================
+           绘制逻辑
+        ========================= */
+
+        function drawQuadrant(points, size) {
+            const step = size / P.innerGrid
+
+            ctx.lineWidth = 3
+            ctx.strokeStyle = '#ffffff'
+            ctx.beginPath()
+
+            for (let i = 1; i < points.length; i++) {
+                const p1 = points[i - 1]
+                const p2 = points[i]
+                if (p1 === false || p2 === false) continue
+
+                ctx.moveTo(p1[0] * step, p1[1] * step)
+                ctx.lineTo(p2[0] * step, p2[1] * step)
+            }
+
+            ctx.stroke()
+        }
+
+        function drawMirrored(points, size) {
+            const half = size / 2
+
+            ctx.save()
+            ctx.translate(half, half)
+
+            if (P.symmetry === 'reflect') {
+                ctx.scale(1, -1)
+                drawQuadrant(points, half)
+                ctx.scale(1, -1)
+                drawQuadrant(points, half)
+                ctx.scale(-1, 1)
+                drawQuadrant(points, half)
+                ctx.scale(1, -1)
+                drawQuadrant(points, half)
+            } else {
+                for (let i = 0; i < 4; i++) {
+                    drawQuadrant(points, half)
+                    ctx.rotate(Math.PI / 2)
+                }
+            }
+
+            ctx.restore()
+        }
+
+        /* =========================
+           主绘制流程
+        ========================= */
+
+        let pointsData = []
+
+        function regenerate() {
+            pointsData = []
+            for (let i = 0; i < P.tiles * P.tiles; i++) {
+                pointsData.push(getPoints())
+            }
+            draw()
+        }
+
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height)
+
+            const m = Math.min(canvas.width, canvas.height) * 0.85
+            const blockStep = m / P.tiles
+            const padding = blockStep * P.padding
+            const blockSize = blockStep - padding * 2
+
+            ctx.save()
+            ctx.translate(
+                (canvas.width - m) / 2,
+                (canvas.height - m) / 2
+            )
+
+            pointsData.forEach((points, i) => {
+                const x = i % P.tiles
+                const y = Math.floor(i / P.tiles)
+
+                ctx.save()
+                ctx.translate(
+                    x * blockStep + padding,
+                    y * blockStep + padding
+                )
+                drawMirrored(points, blockSize)
+                ctx.restore()
+            })
+
+            ctx.restore()
+        }
+
+        /* =========================
+           启动
+        ========================= */
+
+        resize()
+        regenerate()
+    </script>
+
+</body>
+
+</html>

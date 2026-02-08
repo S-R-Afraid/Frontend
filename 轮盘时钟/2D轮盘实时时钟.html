@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>自适应线性滚动时钟</title>
+    <style>
+        :root {
+            --bg-color: #0a0a0a;
+            --text-color: #f4e4d6;
+
+            /* 基础配置 */
+            --base-font-size: 100px;
+            /* 初始值，会被 JS 覆盖 */
+            --line-height-ratio: 1.2;
+            /* 行高是字号的 1.2 倍 */
+        }
+
+        body {
+            margin: 0;
+            height: 100vh;
+            background-color: var(--bg-color);
+            background-image: radial-gradient(circle at center, #1a1a1a 0%, #000 100%);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow: hidden;
+            font-family: 'Inter', 'Helvetica Neue', Arial, sans-serif;
+        }
+
+        /* --- 模拟父容器 (用户可以拖拽改变大小) --- */
+        .resizable-container {
+            width: 80vw;
+            height: 30vh;
+            min-width: 300px;
+            min-height: 100px;
+            border: 1px dashed #333;
+            /* 边框仅用于示意范围 */
+            position: relative;
+
+            /* 居中内容 */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+
+            /* 允许用户拖拽改变大小 */
+            resize: both;
+            overflow: hidden;
+            background: rgba(255, 255, 255, 0.02);
+            transition: border-color 0.3s;
+        }
+
+        .resizable-container:hover {
+            border-color: #666;
+        }
+
+        /* 提示文字 */
+        .tip {
+            position: absolute;
+            bottom: 5px;
+            right: 5px;
+            font-size: 10px;
+            color: #555;
+            pointer-events: none;
+        }
+
+        /* --- 时钟本体 --- */
+        .clock {
+            display: flex;
+            align-items: center;
+            /* 关键：使用 CSS 变量控制整体大小 */
+            font-size: var(--base-font-size);
+            line-height: var(--line-height-ratio);
+            gap: 0.1em;
+            /* 间距也随字号缩放 */
+            color: var(--text-color);
+        }
+
+        /* 视窗 */
+        .digit-window {
+            /* 宽度和高度都使用 em，随 font-size 变化 */
+            width: 0.65em;
+            height: calc(1em * var(--line-height-ratio));
+            overflow: hidden;
+            position: relative;
+
+            /* 遮罩：让上下边缘渐隐 */
+            mask-image: linear-gradient(to bottom, transparent 0%, black 15%, black 85%, transparent 100%);
+            -webkit-mask-image: linear-gradient(to bottom, transparent 0%, black 15%, black 85%, transparent 100%);
+        }
+
+        .digit-strip {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            will-change: transform;
+        }
+
+        .num {
+            /* 强制高度一致 */
+            height: calc(1em * var(--line-height-ratio));
+            display: flex;
+            /* 为了垂直居中 */
+            align-items: center;
+            justify-content: center;
+
+            font-weight: 800;
+            letter-spacing: -0.05em;
+        }
+
+        .separator {
+            font-weight: bold;
+            margin: 0 0.1em;
+            color: #444;
+            /* 分隔符微调，使其视觉居中 */
+            padding-bottom: 0.1em;
+        }
+    </style>
+</head>
+
+<body>
+
+    <!-- 这是一个可以调整大小的父容器 -->
+    <div class="resizable-container" id="parentContainer">
+        <div class="tip">拖拽右下角调整大小</div>
+
+        <div class="clock" id="clock">
+            <!-- JS 生成内容 -->
+        </div>
+    </div>
+
+    <script>
+        // 全局状态：当前的单行高度（像素），用于计算滚动偏移
+        // 初始值给 0，后面 fitClock 会立即更新它
+        let currentItemHeight = 0;
+
+        class Tape {
+            constructor(range) {
+                this.range = range;
+                // 构造 [0...9, 0] 序列实现无缝循环
+                this.sequence = [...range, range[0]];
+
+                this.window = document.createElement('div');
+                this.window.className = 'digit-window';
+
+                this.strip = document.createElement('div');
+                this.strip.className = 'digit-strip';
+
+                this.sequence.forEach(num => {
+                    const el = document.createElement('div');
+                    el.className = 'num';
+                    el.textContent = num;
+                    this.strip.appendChild(el);
+                });
+
+                this.window.appendChild(this.strip);
+            }
+
+            /**
+             * 设置位置
+             * @param {number} value 浮点数值
+             */
+            setPosition(value) {
+                const mod = this.range.length;
+                let pos = value % mod;
+                if (pos < 0) pos += mod;
+
+                // 关键：这里使用全局变量 currentItemHeight
+                // 这样当 resize 发生后，偏移量会自动根据新的高度计算
+                const offset = pos * currentItemHeight * -1;
+
+                this.strip.style.transform = `translateY(${offset}px)`;
+            }
+
+            get element() {
+                return this.window;
+            }
+        }
+
+        // --- 初始化 ---
+        const clockContainer = document.getElementById('clock');
+        const tapes = {};
+
+        // 定义结构：年-月-日 时:分:秒
+        const schema = [
+            { key: 'y1', range: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9] },
+            { key: 'y2', range: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9] },
+            { key: 'y3', range: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9] },
+            { key: 'y4', range: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9] },
+            { sep: '-' },
+            { key: 'm1', range: [0, 1] },
+            { key: 'm2', range: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9] },
+            { sep: '-' },
+            { key: 'd1', range: [0, 1, 2, 3] },
+            { key: 'd2', range: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9] },
+            { sep: '&nbsp;' },
+            { key: 'h1', range: [0, 1, 2] },
+            { key: 'h2', range: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9] },
+            { sep: ':' },
+            { key: 'min1', range: [0, 1, 2, 3, 4, 5] },
+            { key: 'min2', range: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9] },
+            { sep: ':' },
+            { key: 's1', range: [0, 1, 2, 3, 4, 5] },
+            { key: 's2', range: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9] }
+        ];
+
+        schema.forEach(item => {
+            if (item.sep) {
+                const s = document.createElement('div');
+                s.className = 'separator';
+                s.innerHTML = item.sep;
+                clockContainer.appendChild(s);
+            } else {
+                const tape = new Tape(item.range);
+                tapes[item.key] = tape;
+                clockContainer.appendChild(tape.element);
+            }
+        });
+
+        // --- 自适应缩放逻辑 (核心部分) ---
+
+        const parentContainer = document.getElementById('parentContainer');
+        // 我们假设整个时钟大概有多少个字符宽（用于估算字号）
+        // 4(年)+2(月)+2(日)+2(时)+2(分)+2(秒)+间隔符 ≈ 18个字符
+        const CHAR_COUNT_ESTIMATE = 21;
+        const LINE_HEIGHT_RATIO = 1.2;
+
+        function fitClock() {
+            const w = parentContainer.clientWidth;
+            const h = parentContainer.clientHeight;
+
+            // 策略：
+            // 1. 尝试按宽度适配：字号 = 容器宽度 / 字符数估算
+            // 2. 尝试按高度适配：字号 = 容器高度 / 行高比例
+            // 3. 取两者中较小的那个，确保既不超宽也不超高
+
+            // 留一点 padding (0.9)
+            const sizeByWidth = (w / CHAR_COUNT_ESTIMATE) * 1.5; // 1.5是微调系数，因为字符不是等宽且有重叠
+            const sizeByHeight = (h / LINE_HEIGHT_RATIO) * 0.9;
+
+            const newFontSize = Math.min(sizeByWidth, sizeByHeight);
+
+            // 更新 CSS 变量
+            clockContainer.style.setProperty('--base-font-size', `${newFontSize}px`);
+
+            // 更新 JS 逻辑所需的“行高”数据
+            // 必须与 CSS 中的 calc(1em * ratio) 保持一致
+            currentItemHeight = newFontSize * LINE_HEIGHT_RATIO;
+        }
+
+        // 使用 ResizeObserver 监听父容器大小变化
+        const observer = new ResizeObserver(() => {
+            fitClock();
+        });
+        observer.observe(parentContainer);
+
+        // 初始化调用一次
+        fitClock();
+
+
+        // --- 动画循环 ---
+        function loop() {
+            const now = new Date();
+            const ms = now.getMilliseconds();
+            const s = now.getSeconds() + ms / 1000;
+            const m = now.getMinutes() + s / 60;
+            const h = now.getHours() + m / 60;
+
+            const d = now.getDate() + h / 24;
+            const mon = (now.getMonth() + 1) + (d - 1) / 30;
+            const y = now.getFullYear() + (mon - 1) / 12;
+
+            tapes.s2.setPosition(s);
+            tapes.s1.setPosition(s / 10);
+
+            tapes.min2.setPosition(m);
+            tapes.min1.setPosition(m / 10);
+
+            tapes.h2.setPosition(h);
+            tapes.h1.setPosition(h / 10);
+
+            tapes.d2.setPosition(d);
+            tapes.d1.setPosition(d / 10);
+
+            tapes.m2.setPosition(mon);
+            tapes.m1.setPosition(mon / 10);
+
+            tapes.y4.setPosition(y);
+            tapes.y3.setPosition(y / 10);
+            tapes.y2.setPosition(y / 100);
+            tapes.y1.setPosition(y / 1000);
+
+            requestAnimationFrame(loop);
+        }
+
+        loop();
+
+    </script>
+</body>
+
+</html>

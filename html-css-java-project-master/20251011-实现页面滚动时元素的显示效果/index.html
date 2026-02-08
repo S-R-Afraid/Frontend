@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>使用原生JavaScript通过动画实现页面滚动时元素的显示效果</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <section>
+        <h2>Scroll To Reveal</h2>
+    </section>
+    <div class="container"></div>
+
+    <script>
+        // 创建60个div元素
+        for (let i =1; i<=60;i++) {
+            let box = document.createElement('div');
+            box.classList.add('box');
+            document.querySelector('.container').appendChild(box)
+        }
+
+        // 随机生成颜色
+        let randomColorBlock = document.querySelectorAll('.box');
+
+        // 给随机颜色的div元素添加颜色
+        function addColor() {
+            randomColorBlock.forEach(e => {
+                e.style.background = randomColor()
+            })
+        }
+
+        // 生成随机颜色
+        function randomColor() {
+            let chars = '1234567890abcdef';
+            let colorLength = 6;
+            let color = "";
+
+            for (let i = 1; i<=colorLength;i++){
+                let randomColors = Math.floor(Math.random() * chars.length);
+                color+=chars.substring(randomColors, randomColors+1);
+            }
+            return `#${color}`
+        }
+
+        // 调用函数生成随机颜色
+        addColor()
+        // 监听页面滚动事件，并添加active类
+        let boxes = document.querySelectorAll('.box');
+        function scrollTrigger(){
+            boxes.forEach(boxxx => {
+                if(boxxx.offsetTop < window.scrollY) {
+                    boxxx.classList.add('active')
+                } else {
+                    boxxx.classList.remove('active')
+                }
+            })
+        }
+        window.addEventListener('scroll',scrollTrigger)
+    </script>
+</body>
+</html>

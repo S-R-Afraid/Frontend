@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>构建便签应用初学者项目</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <div class="notes">
+            <div id="create">
+                <span>+</span>
+                <div class="createBox">
+                    <div class="innerCreateBox">
+                        <textarea id="userInput" placeholder="Write Here..." maxlength="160"></textarea>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let createBox = document.getElementsByClassName('createBox')[0];
+        let notes = document.getElementsByClassName('notes')[0];
+        let input = document.getElementById('userInput');
+        let i = 0;
+
+        createBox.addEventListener('keydown', content);
+
+        document.getElementById('create').addEventListener('click', function() {
+            createBox.style.display = 'block';
+        });
+
+        function content(e) {
+            if(e.keyCode == '13') {
+                divStyle(input.value);
+                input.value = '';
+                createBox.style.display = 'none';
+            }
+        }
+
+        function color() {
+            let randomColors = ['#f28b82', '#fbbc04', '#fff475', '#ccff90', '#a7ffeb', '#cbf0f8', '#aecbfa', '#d7aefb', '#fdcfe8', '#e6c9a8', '#e8eaed'];
+            if (i > randomColors.length - 1) {
+                i = 0;
+            }
+            return randomColors[i++];
+        }
+
+        function divStyle(text) {
+            let div = document.createElement('div');
+            div.className = 'note';
+            div.innerHTML = '<div class="details">'+'<h3>'+text+'</h3>'+'</div>'
+
+            div.addEventListener("dblclick", function(){
+                div.remove()
+            })
+
+            div.setAttribute('style', 'background-color:' + color()+'');
+            notes.appendChild(div);
+        }
+    </script>
+</body>
+</html>

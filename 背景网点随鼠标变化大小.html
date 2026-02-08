@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<title>网点背景 + 正文示例</title>
+<style>
+  /* 1. 让画布全屏垫底 */
+  #dotCanvas {
+    position: fixed;
+    inset: 0;          /* top:0; right:0; bottom:0; left:0; */
+    z-index: -1;
+    cursor: none;
+  }
+
+  /* 2. 正文容器 */
+  .content {
+    position: relative;
+    z-index: 1;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 40px 20px;
+    font-family: system-ui, sans-serif;
+    color: #222;
+    text-align: center;
+  }
+
+  /* 3. 导航栏（可选） */
+  nav {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    background: rgba(255,255,255,.75);
+    backdrop-filter: blur(6px);
+    padding: 12px 0;
+    z-index: 2;
+  }
+  nav a {
+    margin: 0 12px;
+    color: #333;
+    text-decoration: none;
+    font-weight: 600;
+  }
+  nav a:hover {
+    color: #ff6600;
+  }
+
+  h1 {
+    margin: 0 0 16px;
+    font-size: 2.5rem;
+  }
+  p {
+    max-width: 600px;
+    line-height: 1.6;
+  }
+</style>
+</head>
+<body>
+<!-- 网点背景 -->
+<canvas id="dotCanvas"></canvas>
+
+<!-- 顶部导航 -->
+<nav>
+  <a href="#">首页</a>
+  <a href="#">关于</a>
+  <a href="#">联系</a>
+</nav>
+
+<!-- 正文区域 -->
+<main class="content">
+  <h1>Hello, Grid Dots</h1>
+  <p>
+    这是一个把「动态网格网点」作为全屏背景的示例。画布使用
+    <code>position: fixed; z-index: -1;</code>
+    固定在底层，所有正文内容都可以像往常一样摆放，完全不影响原有布局。
+  </p>
+</main>
+
+<script>
+/* ========= 网点背景脚本（同之前） ========= */
+const canvas = document.getElementById('dotCanvas');
+const ctx    = canvas.getContext('2d');
+
+let cols = 14, rows = 9;
+let dotSize = 2, 
+    maxScale = 10;
+let mouse = { x: -9999, y: -9999 };
+const dots = [];
+
+resize();
+window.addEventListener('resize', resize);
+window.addEventListener('mousemove', e => {
+  mouse.x = e.clientX; mouse.y = e.clientY;
+});
+
+function resize() {
+  canvas.width  = window.innerWidth;
+  canvas.height = window.innerHeight;
+  buildGrid();
+}
+function buildGrid() {
+  dots.length = 0;
+  const gapX = canvas.width  / (cols + 1);
+  const gapY = canvas.height / (rows + 1);
+  for (let r = 1; r <= rows; r++)
+    for (let c = 1; c <= cols; c++)
+      dots.push({
+        x: gapX * c,
+        y: gapY * r,
+        baseR: dotSize,
+        color: `rgba(0,0,0,${0.08 + Math.random()*0.12})`
+      });
+}
+function draw() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  dots.forEach(d => {
+    const scale = Math.max(0.3, maxScale - Math.hypot(d.x - mouse.x, d.y - mouse.y) / 120);
+    ctx.beginPath();
+    ctx.arc(d.x, d.y, d.baseR * scale, 0, Math.PI * 2);
+    ctx.fillStyle = d.color;
+    ctx.fill();
+  });
+  requestAnimationFrame(draw);
+}
+draw();
+</script>
+</body>
+</html>

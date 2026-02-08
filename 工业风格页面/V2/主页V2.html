@@ -1,0 +1,426 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Industrial Pager Demo</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!--基础样式设置-->
+    <link rel="stylesheet" href="V2.css">
+    <!--导入字体-->
+
+    <link href="https://fontsapi.zeoseven.com/236/main/result.css" onload="this.rel='stylesheet'" rel="preload"
+        as="style" crossorigin />
+    <noscript>
+        <link rel="stylesheet" href="https://fontsapi.zeoseven.com/236/main/result.css" />
+    </noscript>
+    <link href="https://fontsapi.zeoseven.com/279/main/result.css" onload="this.rel='stylesheet'" rel="preload"
+        as="style" crossorigin />
+    <noscript>
+        <link rel="stylesheet" href="https://fontsapi.zeoseven.com/279/main/result.css" />
+    </noscript>
+
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=ZCOOL+QingKe+HuangYou&display=swap" rel="stylesheet">
+    <link
+        href="https://fonts.googleapis.com/css2?family=Megrim&family=Smooch&family=Splash&family=Trade+Winds&display=swap"
+        rel="stylesheet">
+
+    <style>
+
+    </style>
+</head>
+<!--hover角标效果层-->
+<div id="corner-indicator" aria-hidden="true">
+    <span class="tl">⌜</span>
+    <span class="tr">⌝</span>
+    <span class="bl">⌞</span>
+    <span class="br">⌟</span>
+</div>
+
+
+<body>
+    <script src="../asset/javascript/glitch-text.js"></script>
+    <!-- 背景网格（底层） -->
+    <div class="grid-base"></div>
+
+    <!-- 鼠标发光网格（顶层 HUD） -->
+    <div class="grid-glow"></div>
+
+
+    <header class="site-header" role="banner" aria-label="主导航">
+        <div class="header-left" id="goHome" data-selectable tabindex="0" role="button" aria-label="回首页">
+            <!-- 内嵌 SVG logo：简洁齿轮/方块混合，纯 CSS/inline SVG 可缩放 -->
+            <div class="logo" aria-hidden="true">
+                <img src="../asset/logo.svg" alt="Kappa Heavy Industries">
+            </div>
+
+            <div class="company-meta">
+                <div class="company-name" aria-hidden="true" style="font-family: 峄山碑篆体;">河童重工</div>
+                <div class="company-sub" style="font-family: Smooch;">Industrial Systems & Interfaces</div>
+            </div>
+        </div>
+
+        <div class="header-right" aria-hidden="false">
+            <div class="info-group">
+                <div class="coord-label">Cursor</div>
+                <div class="coord-box" aria-live="polite" aria-atomic="true">
+                    <div class="coord-row">X: <span id="mx">0</span></div>
+                    <div class="coord-row">Y: <span id="my">0</span></div>
+                </div>
+            </div>
+
+            <div class="info-group">
+                <div class="coord-label">Local Time</div>
+                <div class="clock-box" id="clock" aria-live="polite" aria-atomic="true">00:00:00</div>
+            </div>
+        </div>
+
+    </header>
+
+    <div id="pager">
+        <section class="page active">
+            <div class="page-frame">
+                <div class="page-scroll">
+                    <div style="height: 35vh;align-items: center;">
+                        <div style="height: 10vh;"></div>
+                        <h1 data-selectable
+                            style="margin: 0 auto;width: 40vw;text-align: justify;text-align-last: justify;font-family: 峄山碑篆体;font-size:clamp(40px, 10vw, 100px);">
+                            河童重工</h1>
+                    </div>
+                    <div data-selectable id="Homepage-Slogan" style="text-align: center;"></div>
+                    <script type=" text/javascript">
+                createGlitch('#Homepage-Slogan', {
+                phrases: ["齿轮驱动幻想，", "炉火铸就未来。", "Kappa Heavy\nIndustries",],
+                obfu_chars: "░▒▓▖▗▘▙▚▛▜▝▞▟",
+                color: "#988b32",
+                fontFamily: "Smooch,华康金文体W3",
+                fontSize: "clamp(24px, 10vw, 100px)", // 设置大小
+                //fontWeight: "bold",
+                disp_time: 3000,
+                start_time: 80,
+                end_time: 80
+                });
+                </script>
+                </div>
+            </div>
+        </section>
+        <!-- 首页 / 核心定位 -->
+        <section class="page">
+            <div class="page-frame">
+                <div class="page-scroll">
+                    <h1 data-selectable style="font-family: 峄山碑篆体;">河童重工</h1>
+                    <div data-selectable>
+                        <p>
+                            “河童重工（Kappa Heavy Industries）”并非一家单一法人意义上的企业，而是活跃于妖怪之山水系沿线的河童技术共同体对外使用的统称。<br>
+                            其本质是一个以工程、制造、维护为核心能力的行会—企业混合体，兼具妖怪社会的松散自治与近代工业组织形态。
+                        </p>
+                    </div>
+
+
+                    <div class="cards">
+                        <div class="card" data-selectable>
+                            <h3>工业级界面</h3>
+                            <p>为复杂系统提供高信息密度、低歧义的人机界面。</p>
+                        </div>
+                        <div class="card" data-selectable>
+                            <h3>系统结设计</h3>
+                            <p>模块化、可复用、长期可维护的系统架构。</p>
+                        </div>
+                        <div class="card" data-selectable>
+                            <h3>交互逻辑建模</h3>
+                            <p>以状态为核心的交互设计，而非表层动画。</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 公司介绍 -->
+        <section class="page">
+            <div class="page-frame">
+                <div class="page-scroll">
+                    <div style="display: grid;grid-template-columns: 3fr 1fr;gap: 16px;">
+                        <div>
+                            <h1 data-selectable>我们是谁</h1>
+                            <div data-selectable>
+                                <p>
+                                    河童重工的起源可追溯至妖怪之山开发初期。
+                                </p>
+                                <p>
+                                    河童一族天生擅长机械、水利与能源装置，在长期维护山中水道、防洪设施与发电装置的过程中，逐步形成了系统化的工程知识与标准化构件体系。
+                                </p>
+                                <P>
+                                    当守矢神社迁入妖怪之山后，对“可控技术”“稳定供能”的需求进一步放大，河童的技术活动从零散发明转向准工业化生产，“河童重工”这一对外称谓也随之固定下来。
+                                </p>
+                                <p>
+                                    可维修性、可替换性与长期运行稳定，是我们在所有项目中坚持的基本原则。
+                                </p>
+                            </div>
+                        </div>
+                        <div>
+                            <img data-selectable src="../asset/logo.svg" alt="Kappa Heavy Industries">
+
+                        </div>
+                    </div>
+
+
+                    <div class="cards">
+                        <div class="card" data-selectable>
+                            <h3>设计理念</h3>
+                            <p>齿轮驱动幻想，炉火铸就未来。</p>
+                        </div>
+                        <div class="card" data-selectable>
+                            <h3>工作流程</h3>
+                            <p>工房—课题—负责人</p>
+                            <p>工房对应具体技术方向,
+                                课题是阶段性研发或委托项目,
+                                负责人通常由技术能力与资历决定，而非血统或政治地位。</p>
+                        </div>
+                        <div class="card" data-selectable>
+                            <h3>交付标准</h3>
+                            <p>可控、可追责、可回收。</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 成果一 -->
+        <section class="page">
+            <div class="page-frame" style="
+          background:
+            linear-gradient(rgba(0,0,0,0.65), rgba(0,0,0,0.85)),
+            url('../asset/img/metropolis-8800792_1280.jpg')
+            center / cover no-repeat;position: absolute;
+        ">
+                <div class="page-scroll">
+                    <h1 data-selectable>Gensokyo Wide Web“幻维网” - 幻想乡网络基础工程二期建设</h1>
+                    <div data-selectable>
+                        <p>
+                            面向全体幻想乡民的网络基础建设。遍布博丽大结界的基建工程。
+                        </p>
+                        <p>
+                            设计目标为 跨认知的信息可达性、高并发信息展示与可控的信息扩散范围。
+                        </p>
+                    </div>
+                    <div style="position: absolute;right: 16px;bottom: 16px;">
+
+                        <p data-selectable
+                            style="font-size: clamp(24px, 4vw, 40px);font-family: 华康金文体W3;font-weight: 1000;text-align: end;align-content: flex-end;">
+                            让需要流动的东西流动，其余保持安静。
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 成果二 -->
+        <section class="page">
+            <div class="page-frame" style="
+          background:
+            linear-gradient(rgba(0,0,0,0.6), rgba(0,0,0,0.85)),
+            url('../asset/img/camera-2598507_1280.jpg')
+            center / cover no-repeat;position: absolute;
+        ">
+                <div class="page-scroll">
+                    <h1 data-selectable>“文々。カメラ” · 记者用照相机</h1>
+                    <div data-selectable>
+                        <p>
+                            为《文文。新闻》※记者个人设计的专属照相机。
+                        </p>
+                        <p>
+                            广泛应用于偷拍、符卡发射与高机动环境的图像拍摄。
+                        </p>
+                    </div>
+                    <div style="position: absolute;right: 16px;bottom: 16px;">
+
+                        <p data-selectable style="font-size: clamp(24px, 4vw, 40px);font-weight: 1000;text-align: end;">
+                            <span style="font-family: bailutongtongshouxieti;">“我拍到的，才算发生过！”</span>
+                            <br>
+                            <span style="font-family: 华康金文体W3;">——《文文。新闻》※记者,<br>射命丸文</span>
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 成果三 -->
+        <section class="page">
+            <div class="page-frame" style="
+          background:
+            linear-gradient(rgba(0,0,0,0.6), rgba(0,0,0,0.9)),
+            url('../asset/img/machine-1715424_1280.jpg')
+            center / cover no-repeat;position: absolute;
+        ">
+                <div class="page-scroll">
+                    <div>
+                        <h1 data-selectable>非想天则（建设中）</h1>
+                        <div data-selectable>
+                            <p>
+                                超大尺度环境—法则响应结构验证项目。
+                            </p>
+                            <p>
+                                任何可反复出现的现象，都必然存在结构。世界的秩序可以被短暂理解，但不应被长期持有。
+                            </p>
+                            <p>
+                                在幻想乡环境中，“可预测失效”比“高性能运行”更重要。
+                                超规格结构必须主动削弱自身能力，才能被系统接受。
+                                完全自动化在此类尺度下并非最安全方案。
+                            </p>
+                        </div>
+                    </div>
+                    <div style="position: absolute;right: 16px;bottom: 16px;">
+                        <p data-selectable
+                            style="font-size: clamp(24px, 4vw, 40px);;font-family: 华康金文体W3;font-weight: 1000;text-align: end;align-content: flex-end;">
+                            工程的终点不是控制世界，<br>而是确保在失控前能够退出。
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 技术能力 -->
+        <section class="page">
+            <div class="page-frame">
+                <div class="page-scroll">
+                    <h1 data-selectable>技术与能力</h1>
+                    <div data-selectable>
+                        <p>
+                            河童重工 提供从设计到实现的完整系统级解决方案。
+                        </p>
+                    </div>
+
+
+                    <div class="cards">
+                        <div class="card" data-selectable>
+                            <h3>基础设施提供</h3>
+                            <p>水道、堤坝、动力装置与大型机关。</p>
+                        </div>
+                        <div class="card" data-selectable>
+                            <h3>高危险度试作设备的制造</h3>
+                            <p>实验武装、异常弹幕发生器、防御结界补助装置。</p>
+                        </div>
+                        <div class="card" data-selectable>
+                            <h3>技术中介服务</h3>
+                            <p>为天狗、神社乃至人间之里提供“可理解、可维护”的技术解决方案，而非完整的现代工业体系，以避免对幻想乡平衡造成冲击。</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 联系与结语 -->
+        <section class="page">
+            <div class="page-frame">
+                <div class="page-scroll">
+                    <h1 data-selectable>联系我们</h1>
+                    <div data-selectable>
+                        <p>
+                            我们与正在构建工具型平台、工业系统和专业软件的团队合作。
+                            <br>
+                            如需项目合作、方案讨论或技术交流，请通过正式渠道联系。
+                        </p>
+                    </div>
+
+                    <h2 data-selectable>友情合作</h2>
+                    <div class="cards">
+                        <div class="card" data-selectable
+                            style="display: grid;grid-template-columns: 1fr 3fr;gap: 16px; align-items: center;">
+                            <img data-selectable src="../asset/img/幽香农业.png" height="80px" alt="幽香农业">
+                            <p>幽香农业</p>
+                        </div>
+                        <div class="card" data-selectable
+                            style="display: grid;grid-template-columns: 1fr 3fr;gap: 16px;align-items: center;">
+                            <img data-selectable src="../asset/img/八云交通.png" height="80px" alt="幽香农业">
+                            <p>八云交通</p>
+                        </div>
+                        <div class="card" data-selectable
+                            style="display: grid;grid-template-columns: 1fr 3fr;gap: 16px;align-items: center;">
+                            <img data-selectable src="../asset/img/香霖零售.png" height="80px" alt="幽香农业">
+                            <p>香霖零售</p>
+                        </div>
+                        <div class="card" data-selectable
+                            style="display: grid;grid-template-columns: 1fr 3fr;gap: 16px;align-items: center;">
+                            <img data-selectable src="../asset/img/夜雀饮食.png" height="80px" alt="幽香农业">
+                            <p>夜雀饮食</p>
+                        </div>
+                        <div class="card" data-selectable
+                            style="display: grid;grid-template-columns: 1fr 3fr;gap: 16px;align-items: center;">
+                            <img data-selectable src="../asset/img/博丽专制.png" height="80px" alt="幽香农业">
+                            <p>博丽专制</p>
+                        </div>
+                        <div class="card" data-selectable
+                            style="display: grid;grid-template-columns: 1fr 3fr;gap: 16px;align-items: center;">
+                            <img data-selectable src="../asset/img/白泽乳业.png" height="80px" alt="幽香农业">
+                            <p>白泽乳业</p>
+                        </div>
+                        <div class="card" data-selectable
+                            style="display: grid;grid-template-columns: 1fr 3fr;gap: 16px;align-items: center;">
+                            <img data-selectable src="../asset/img/三途川律师事务所.png" height="80px" alt="幽香农业">
+                            <p>三途川律师事务所</p>
+                        </div>
+                        <div class="card" data-selectable
+                            style="display: grid;grid-template-columns: 1fr 3fr;gap: 16px;align-items: center;">
+                            <img data-selectable src="../asset/img/永江气象站.png" height="80px" alt="幽香农业">
+                            <p>永江气象站</p>
+                        </div>
+                        <div class="card" data-selectable
+                            style="display: grid;grid-template-columns: 1fr 3fr;gap: 16px;align-items: center;">
+                            <img data-selectable src="../asset/img/藤原煤炭厂.png" height="80px" alt="幽香农业">
+                            <p>藤原煤炭厂</p>
+                        </div>
+                        <div class="card" data-selectable
+                            style="display: grid;grid-template-columns: 1fr 3fr;gap: 16px;align-items: center;">
+                            <img data-selectable src="../asset/img/八意制药.png" height="80px" alt="幽香农业">
+                            <p>八意制药</p>
+                        </div>
+                        <div class="card" data-selectable
+                            style="display: grid;grid-template-columns: 1fr 3fr;gap: 16px;align-items: center;">
+                            <img data-selectable src="../asset/img/雾之湖冰棒小摊.png" height="80px" alt="幽香农业">
+                            <p>雾之湖冰棒小摊</p>
+                        </div>
+                        <div class="card" data-selectable
+                            style="display: grid;grid-template-columns: 1fr 3fr;gap: 16px;align-items: center;">
+                            <img data-selectable src="../asset/img/文文报社.png" height="80px" alt="幽香农业">
+                            <p>文文报社</p>
+                        </div>
+                        <div class="card" data-selectable
+                            style="display: grid;grid-template-columns: 1fr 3fr;gap: 16px;align-items: center;">
+                            <img data-selectable src="../asset/img/地灵殿火葬场.png" height="80px" alt="幽香农业">
+                            <p>地灵殿火葬场</p>
+                        </div>
+                        <div class="card" data-selectable
+                            style="display: grid;grid-template-columns: 1fr 3fr;gap: 16px;align-items: center;">
+                            <img data-selectable src="../asset/img/红魔馆家政.png" height="80px" alt="幽香农业">
+                            <p>红魔馆家政</p>
+                        </div>
+                        <div class="card" data-selectable
+                            style="display: grid;grid-template-columns: 1fr 3fr;gap: 16px;align-items: center;">
+                            <img data-selectable src="../asset/img/爱丽丝工坊.png" height="80px" alt="幽香农业">
+                            <p>爱丽丝工坊</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </section>
+
+    </div>
+
+
+    <footer>
+        <div class="footer-text">
+            <span data-selectable>© 2026 Kappa Heavy Industries SYSTEMS</span>
+            <span data-selectable>Industrial Interface Prototype</span>
+        </div>
+        <div id="progress"><span></span></div>
+    </footer>
+    <!--基础脚本引用-->
+    <script src="IndustrialPagerDemo.js"></script>
+
+</body>
+
+</html>

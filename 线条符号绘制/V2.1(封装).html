@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Symmetric Tile Class</title>
+    <style>
+        html,
+        body {
+            margin: 0;
+            background: #121212;
+            overflow: hidden;
+        }
+
+        canvas {
+            display: block;
+            cursor: pointer;
+        }
+    </style>
+</head>
+
+<body>
+
+    <canvas id="myCanvas"></canvas>
+
+    <script>
+        class SymmetricTile {
+
+            constructor({ canvasId, gridSize, edgesMax, edgesAttempts }) {
+                this.canvas = document.getElementById(canvasId)
+                this.ctx = this.canvas.getContext('2d')
+
+                this.gridSize = gridSize
+                this.innerGrid = gridSize / 2
+                this.edgesMax = edgesMax
+                this.edgesAttempts = edgesAttempts
+
+                this.startPoint = [1, 1]
+                this.directions = [
+                    [1, 0],
+                    [-1, 0],
+                    [0, 1],
+                    [0, -1]
+                ]
+
+                this.currentPoints = null
+
+                this._bindEvents()
+                this._resize()
+                this.regenerate()
+            }
+
+            /* ======================
+               事件与尺寸管理
+            ====================== */
+
+            _bindEvents() {
+                window.addEventListener('resize', () => {
+                    this._resize()
+                    this.draw()
+                })
+
+                this.canvas.addEventListener('mousedown', () => {
+                    this.regenerate()
+                })
+            }
+
+            _resize() {
+                this.canvas.width = window.innerWidth
+                this.canvas.height = window.innerHeight
+            }
+
+            /* ======================
+               工具
+            ====================== */
+
+            _random(arr) {
+                return arr[Math.floor(Math.random() * arr.length)]
+            }
+
+            /* ======================
+               路径生成
+            ====================== */
+
+            getPoints() {
+                let [x, y] = this.startPoint
+                const points = [[x, y]]
+                const edges = {}
+
+                const getEdges = (x, y) => {
+                    const key = `${x}-${y}`
+                    if (!edges[key]) edges[key] = []
+                    return edges[key]
+                }
+
+                let i = 0
+                let count = 0
+
+                while (i < this.edgesAttempts && count < this.edgesMax) {
+                    const visited = getEdges(x, y)
+
+                    const options = this.directions.filter(([dx, dy]) => {
+                        const nx = x + dx
+                        const ny = y + dy
+                        if (nx < 0 || nx > this.innerGrid) return false
+                        if (ny < 0 || ny > this.innerGrid) return false
+                        if (visited.find(p => p[0] === nx && p[1] === ny)) return false
+                        return true
+                    })
+
+                    if (!options.length) break
+
+                    const [dx, dy] = this._random(options)
+                    const px = x
+                    const py = y
+
+                    x += dx
+                    y += dy
+
+                    visited.push([x, y])
+                    getEdges(x, y).push([px, py])
+
+                    points.push([x, y])
+                    count++
+                    i++
+                }
+
+                return points
+            }
+
+            /* ======================
+               绘制（象限 & 对称）
+            ====================== */
+
+            drawQuadrant(points, size) {
+                const step = size / this.innerGrid
+                const ctx = this.ctx
+
+                ctx.beginPath()
+                for (let i = 1; i < points.length; i++) {
+                    const a = points[i - 1]
+                    const b = points[i]
+                    ctx.moveTo(a[0] * step, a[1] * step)
+                    ctx.lineTo(b[0] * step, b[1] * step)
+                }
+                ctx.stroke()
+            }
+
+            drawSymmetric(points, size) {
+                const half = size / 2
+                const ctx = this.ctx
+
+                ctx.save()
+                ctx.translate(half, half)
+
+                ctx.scale(1, -1)
+                this.drawQuadrant(points, half)
+
+                ctx.scale(1, -1)
+                this.drawQuadrant(points, half)
+
+                ctx.scale(-1, 1)
+                this.drawQuadrant(points, half)
+
+                ctx.scale(1, -1)
+                this.drawQuadrant(points, half)
+
+                ctx.restore()
+            }
+
+            /* ======================
+               外部可见行为
+            ====================== */
+
+            regenerate() {
+                this.currentPoints = this.getPoints()
+                this.draw()
+            }
+
+            draw() {
+                if (!this.currentPoints) return
+
+                const ctx = this.ctx
+                ctx.clearRect(0, 0, this.canvas.width, this.canvas.height)
+
+                ctx.strokeStyle = '#ffffff'
+                ctx.lineWidth = 3
+
+                const size = Math.min(this.canvas.width, this.canvas.height) * 0.8
+
+                ctx.save()
+                ctx.translate(
+                    (this.canvas.width - size) / 2,
+                    (this.canvas.height - size) / 2
+                )
+                this.drawSymmetric(this.currentPoints, size)
+                ctx.restore()
+            }
+        }
+
+        /* ======================
+           使用示例（多次复用）
+        ====================== */
+
+        const tile = new SymmetricTile({
+            canvasId: 'myCanvas',
+            gridSize: 20,//边长（必须是偶数）
+            edgesMax: 100,//路径最大长度
+            edgesAttempts: 1000//路径生成尝试次数
+        })
+    </script>
+
+</body>
+
+</html>

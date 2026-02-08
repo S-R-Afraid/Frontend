@@ -1,0 +1,704 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>TITAN STRUCT | 最终修复版</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;700&family=Roboto+Mono:wght@300;400&display=swap"
+        rel="stylesheet">
+    <style>
+        /* === 全局变量 & 可配置常量 === */
+        :root {
+            --cursor-x: 50%;
+            --cursor-y: 50%;
+            --accent: #FFD700;
+            --grid-size: 50px;
+            --glow-radius: 350px;
+            --slide-duration: 0.8s;
+            --grid-color: rgba(255, 255, 255, 0.08);
+        }
+
+        html,
+        body {
+            height: 100%;
+            margin: 0;
+            padding: 0;
+            background-color: #080808;
+            color: #e5e5e5;
+            font-family: 'Roboto Mono', monospace;
+            overflow: hidden;
+        }
+
+        .heading-font {
+            font-family: 'Oswald', sans-serif;
+            text-transform: uppercase;
+        }
+
+        /* --- Grid layers --- */
+        .grid {
+            position: fixed;
+            inset: 0;
+            pointer-events: none;
+        }
+
+        .grid[data-layer="base"] {
+            z-index: 0;
+            background-image:
+                linear-gradient(var(--grid-color) 1px, transparent 1px),
+                linear-gradient(90deg, var(--grid-color) 1px, transparent 1px);
+            background-size: var(--grid-size) var(--grid-size);
+        }
+
+        .grid[data-layer="glow"] {
+            z-index: 50;
+            mix-blend-mode: plus-lighter;
+            isolation: isolate;
+            -webkit-mask-image: radial-gradient(var(--glow-radius) circle at var(--cursor-x) var(--cursor-y), black 0%, transparent 100%);
+            mask-image: radial-gradient(var(--glow-radius) circle at var(--cursor-x) var(--cursor-y), black 0%, transparent 100%);
+            background-image:
+                linear-gradient(rgba(255, 215, 0, 0.2) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(255, 215, 0, 0.2) 1px, transparent 1px);
+            background-size: var(--grid-size) var(--grid-size);
+            /* variables set by GridHUD on this element */
+        }
+
+        /* --- Slider container & slides --- */
+        #slider-container {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            perspective: 1000px;
+            z-index: 1;
+        }
+
+        .slide {
+            position: absolute;
+            inset: 0;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            opacity: 0;
+            pointer-events: none;
+            overflow: hidden;
+            background-color: transparent;
+            transition:
+                transform var(--slide-duration) cubic-bezier(0.7, 0, 0.3, 1),
+                opacity var(--slide-duration) cubic-bezier(0.7, 0, 0.3, 1);
+        }
+
+        .slide::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: radial-gradient(circle at center, rgba(5, 5, 5, 0.4) 0%, rgba(5, 5, 5, 0.65) 100%);
+            z-index: -1;
+        }
+
+        /* semantic state classes */
+        .slide.is-active {
+            opacity: 1;
+            transform: translateY(0) scale(1);
+            z-index: 10;
+            pointer-events: all;
+        }
+
+        .slide.is-before {
+            opacity: 0;
+            transform: translateY(-80px) scale(0.95);
+            z-index: 5;
+        }
+
+        .slide.is-after {
+            opacity: 0;
+            transform: translateY(100%) scale(1);
+            z-index: 20;
+        }
+
+        /* --- Interactive box / corner marks --- */
+        .interactive-box {
+            position: relative;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            border: 1px solid transparent;
+        }
+
+        .corner-mark {
+            position: absolute;
+            width: 10px;
+            height: 10px;
+            border-color: var(--accent);
+            border-style: solid;
+            opacity: 0;
+            pointer-events: none;
+            transition: all 0.4s cubic-bezier(0.25, 1, 0.5, 1);
+        }
+
+        .c-tl {
+            border-width: 2px 0 0 2px;
+            top: 0;
+            left: 0;
+            transform: translate(-20px, -20px);
+        }
+
+        .c-tr {
+            border-width: 2px 2px 0 0;
+            top: 0;
+            right: 0;
+            transform: translate(20px, -20px);
+        }
+
+        .c-bl {
+            border-width: 0 0 2px 2px;
+            bottom: 0;
+            left: 0;
+            transform: translate(-20px, 20px);
+        }
+
+        .c-br {
+            border-width: 0 2px 2px 0;
+            bottom: 0;
+            right: 0;
+            transform: translate(20px, 20px);
+        }
+
+        .interactive-box:hover .corner-mark {
+            opacity: 1;
+        }
+
+        .interactive-box:hover .c-tl {
+            transform: translate(-6px, -6px);
+        }
+
+        .interactive-box:hover .c-tr {
+            transform: translate(6px, -6px);
+        }
+
+        .interactive-box:hover .c-bl {
+            transform: translate(-6px, 6px);
+        }
+
+        .interactive-box:hover .c-br {
+            transform: translate(6px, 6px);
+        }
+
+        .interactive-box:hover {
+            border-color: rgba(255, 215, 0, 0.3);
+            background-color: rgba(255, 255, 255, 0.05);
+        }
+
+        /* button */
+        .btn-base {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 1rem 2.5rem;
+            color: #fff;
+            text-transform: uppercase;
+            font-weight: bold;
+            font-family: 'Oswald', sans-serif;
+            letter-spacing: 0.1em;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .btn-base:hover {
+            color: var(--accent);
+        }
+
+        /* progress bar */
+        .progress-bar {
+            position: fixed;
+            right: 0;
+            top: 0;
+            width: 4px;
+            background: var(--accent);
+            transition: height 0.5s ease;
+            z-index: 100;
+            box-shadow: -2px 0 10px rgba(255, 215, 0, 0.3);
+            height: 20%;
+        }
+
+        /* misc layout pieces kept intact but minimal tweaks for new classes */
+        nav {
+            position: fixed;
+            top: 0;
+            width: 100%;
+            z-index: 50;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1.5rem;
+            background: rgba(0, 0, 0, 0.8);
+            backdrop-filter: blur(6px);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+    </style>
+</head>
+
+<body>
+    <!-- grid layers (kept as top-level fixed elements, but variables are updated on the glow element instance) -->
+    <div class="grid" data-layer="base"></div>
+    <div class="grid" data-layer="glow"></div>
+
+    <nav>
+        <div class="text-2xl 2xl:text-4xl font-bold tracking-tighter heading-font">
+            TITAN<span style="color:var(--accent)">.</span>STRUCT <span
+                style="font-size:.6rem;vertical-align:top">®</span>
+        </div>
+        <div style="display:flex;gap:2rem;align-items:center;font-family:monospace;font-size:.85rem;color:#bfbfbf">
+            <div>COORD: <span id="coord-display" style="color:var(--accent)">0000, 0000</span></div>
+            <div>TIME: <span id="time-display" style="color:#fff">00:00:00</span></div>
+        </div>
+        <div style="display:flex;gap:1rem;">
+            <a href="#" style="color:#fff;text-decoration:none">[ 首页 ]</a>
+            <a href="#" style="color:#fff;text-decoration:none">[ 项目 ]</a>
+            <a href="#" style="color:#fff;text-decoration:none">[ 方案 ]</a>
+            <a href="#" style="color:#fff;text-decoration:none">[ 联系 ]</a>
+        </div>
+    </nav>
+
+    <div class="progress-bar" id="progress-bar"></div>
+
+    <main id="slider-container">
+        <!-- Slide 1 -->
+        <section class="slide is-active">
+            <div class="relative w-full h-full flex flex-col justify-center items-center text-center px-4">
+                <div
+                    style="position:absolute;top:5rem;right:2.5rem;font-size:.9rem;color:rgba(255,255,255,.3);font-family:monospace">
+                    SYS.404-B <br> LAT: 34.0522
+                </div>
+                <h1 style="font-size: clamp(3rem, 6vw, 8rem);line-height:1; margin:0 0 1.5rem 0;" class="heading-font">
+                    FORGING <br>
+                    <span
+                        style="background:linear-gradient(#fff,#8a8a8a);-webkit-background-clip:text;background-clip:text;color:transparent;">THE
+                        FUTURE</span>
+                </h1>
+                <p
+                    style="max-width:48rem;color:#9b9b9b;margin-bottom:2rem;padding-left:1rem;border-left:2px solid var(--accent);font-size:1rem;text-align:left">
+                    // 精密工程解决方案<br>我们不只是建造结构，我们定义工业美学的标准。从蓝图到现实，绝对的精准与控制。
+                </p>
+                <button data-action="next" class="btn-base interactive-box">开始探索项目</button>
+            </div>
+        </section>
+
+        <!-- Slide 2 -->
+        <section class="slide is-after">
+            <div class="container mx-auto px-6 h-full flex flex-col justify-center">
+                <div
+                    style="display:grid;grid-template-columns:repeat(3,1fr);gap:0;border-top:1px solid rgba(255,255,255,.08);border-bottom:1px solid rgba(255,255,255,.08)">
+                    <div class="interactive-box p-8" style="padding:3rem">
+                        <div style="color:var(--accent);font-size:.85rem">01 // PRECISE</div>
+                        <h3 class="heading-font" style="font-size:1.5rem;margin-top:.5rem">精密制造</h3>
+                        <p style="color:#9b9b9b;font-size:.95rem">利用五轴数控加工中心，将误差控制在微米级别。</p>
+                    </div>
+                    <div class="interactive-box p-8" style="padding:3rem">
+                        <div style="color:var(--accent);font-size:.85rem">02 // ROBUST</div>
+                        <h3 class="heading-font" style="font-size:1.5rem;margin-top:.5rem">结构强度</h3>
+                        <p style="color:#9b9b9b;font-size:.95rem">专为极端环境设计。采用航天级合金材料。</p>
+                    </div>
+                    <div class="interactive-box p-8" style="padding:3rem">
+                        <div style="color:var(--accent);font-size:.85rem">03 // AUTOMATION</div>
+                        <h3 class="heading-font" style="font-size:1.5rem;margin-top:.5rem">全自动化</h3>
+                        <p style="color:#9b9b9b;font-size:.95rem">整合最新的工业物联网 (IIoT) 技术，实时监控。</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Slide 3 -->
+        <section class="slide is-after">
+            <div
+                style="position:absolute;inset:0;background-image:url('https://images.unsplash.com/photo-1565008447742-97f6f38c985c?q=80&w=2600&auto=format&fit=crop');background-size:cover;background-position:center;opacity:.3;filter:grayscale(1);mix-blend-mode:overlay">
+            </div>
+            <div
+                style="position:relative;z-index:10;padding:3rem;display:flex;flex-direction:column;justify-content:flex-end;height:100%">
+                <div
+                    style="display:flex;justify-content:space-between;align-items:flex-end;border-top:1px solid rgba(255,255,255,.12);padding-top:2rem">
+                    <div>
+                        <span
+                            style="background:var(--accent);color:#000;padding:.25rem .5rem;font-weight:700;font-size:.9rem">最新案例</span>
+                        <h2 class="heading-font" style="font-size:3rem;margin:.5rem 0">SECTOR 7</h2>
+                        <p style="color:#bfbfbf">深海钻探平台结构件重组</p>
+                    </div>
+                    <div>
+                        <button class="btn-base interactive-box">查看详细蓝图 -></button>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Slide 4 -->
+        <section class="slide is-after">
+            <div style="padding:3rem">
+                <div style="border-left:4px solid var(--accent);padding-left:1rem;margin-bottom:2rem">
+                    <h2 class="heading-font" style="font-size:2rem">PERFORMANCE<br>METRICS</h2>
+                </div>
+                <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:2rem">
+                    <div class="interactive-box"
+                        style="padding:2rem;border:1px solid rgba(255,255,255,.08);background:rgba(0,0,0,.4)">
+                        <div class="heading-font" style="font-size:2rem">98<span
+                                style="color:var(--accent);font-size:1rem">%</span></div>
+                        <div style="color:#9b9b9b;font-size:.85rem">交付效率</div>
+                    </div>
+                    <div class="interactive-box"
+                        style="padding:2rem;border:1px solid rgba(255,255,255,.08);background:rgba(0,0,0,.4)">
+                        <div class="heading-font" style="font-size:2rem">450<span
+                                style="color:var(--accent);font-size:1rem">+</span></div>
+                        <div style="color:#9b9b9b;font-size:.85rem">重型设施</div>
+                    </div>
+                    <div class="interactive-box"
+                        style="padding:2rem;border:1px solid rgba(255,255,255,.08);background:rgba(0,0,0,.4)">
+                        <div class="heading-font" style="font-size:2rem">0.01</div>
+                        <div style="color:#9b9b9b;font-size:.85rem">微米级公差</div>
+                    </div>
+                    <div class="interactive-box"
+                        style="padding:2rem;border:1px solid rgba(255,255,255,.08);background:rgba(0,0,0,.4)">
+                        <div class="heading-font" style="font-size:2rem">24/7</div>
+                        <div style="color:#9b9b9b;font-size:.85rem">系统监控</div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Slide 5 -->
+        <section class="slide is-after">
+            <div style="padding:3rem;position:relative">
+                <div
+                    style="position:absolute;right:0;top:50%;transform:translateY(-50%);font-size:12rem;font-weight:700;color:rgba(255,255,255,0.02);text-align:right;pointer-events:none;user-select:none">
+                    TITAN<br>INC.
+                </div>
+                <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:3rem;position:relative;z-index:10">
+                    <div style="grid-column:span 2">
+                        <h4 class="heading-font" style="font-size:2rem">TITAN<span
+                                style="color:var(--accent)">.</span>STRUCT</h4>
+                        <p style="color:#9b9b9b">致力于为下一代工业基础设施提供最坚固的基石。ISO 9001 认证企业。</p>
+                        <div style="display:flex;gap:1rem;margin-top:1rem;font-weight:700">
+                            <a href="#" style="color:#fff">LINKEDIN</a>
+                            <a href="#" style="color:#fff">TWITTER</a>
+                        </div>
+                    </div>
+                    <div>
+                        <h5 style="font-weight:700">Contact</h5>
+                        <ul style="color:#9b9b9b;font-size:.95rem">
+                            <li><span style="color:#7f7f7f;font-size:.8rem">HQ</span> 工业大道西 1024 号</li>
+                            <li><span style="color:#7f7f7f;font-size:.8rem">TEL</span> +86 021-5555-8888</li>
+                        </ul>
+                    </div>
+                    <div>
+                        <h5 style="font-weight:700">System</h5>
+                        <ul style="color:#9b9b9b;font-family:monospace">
+                            <li>Version: 2.4.0</li>
+                            <li>Status: <span style="color:#28a745">● Online</span></li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div
+                    style="margin-top:3rem;border-top:1px solid rgba(255,255,255,.04);padding-top:1rem;color:#9b9b9b;display:flex;justify-content:space-between">
+                    <div>© 2026 TITAN STRUCT INDUSTRIES.</div>
+                    <div>DESIGNED FOR HEAVY DUTY.</div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <script>
+        (function () {
+            'use strict';
+
+            /* ===========================
+               Utility: CornerDecorator
+               Injects corner marks into .interactive-box elements under a root.
+               Idempotent: marks elements with data-corners-injected to avoid duplicates.
+               =========================== */
+            class CornerDecorator {
+                static apply(root = document) {
+                    const boxes = root.querySelectorAll('.interactive-box');
+                    boxes.forEach(el => {
+                        if (el.dataset.cornersInjected) return;
+                        ['c-tl', 'c-tr', 'c-bl', 'c-br'].forEach(c => {
+                            const span = document.createElement('span');
+                            span.className = `corner-mark ${c}`;
+                            el.appendChild(span);
+                        });
+                        el.dataset.cornersInjected = '1';
+                    });
+                }
+            }
+
+            /* ===========================
+               GridHUD: handles pointer -> glow element css variables and coordinate display
+               Bound to a container element (instance-level). Throttled via requestAnimationFrame.
+               =========================== */
+            class GridHUD {
+                constructor(options = {}) {
+                    this.container = options.container || document.getElementById('slider-container');
+                    this.glowEl = options.glowEl || document.querySelector('.grid[data-layer="glow"]');
+                    this.coordEl = options.coordEl || document.getElementById('coord-display');
+                    this._boundMouse = this._onPointerMove.bind(this);
+                    this._boundTouch = this._onTouchMove.bind(this);
+                    this._raf = null;
+                    this._pending = null;
+                    this._lastTS = 0;
+                    this._minInterval = 33; // ~30fps
+                    this._init();
+                }
+
+                _init() {
+                    if (!this.container || !this.glowEl) return;
+                    // ensure glowEl has initial variables
+                    this.glowEl.style.setProperty('--cursor-x', '50%');
+                    this.glowEl.style.setProperty('--cursor-y', '50%');
+                    this.container.addEventListener('mousemove', this._boundMouse, { passive: true });
+                    this.container.addEventListener('touchmove', this._boundTouch, { passive: true });
+                }
+
+                _onPointerMove(e) {
+                    this._pending = { x: e.clientX, y: e.clientY };
+                    if (!this._raf) this._raf = requestAnimationFrame(this._rafUpdate.bind(this));
+                }
+
+                _onTouchMove(e) {
+                    if (!e.touches || e.touches.length === 0) return;
+                    const t = e.touches[0];
+                    this._pending = { x: t.clientX, y: t.clientY };
+                    if (!this._raf) this._raf = requestAnimationFrame(this._rafUpdate.bind(this));
+                }
+
+                _rafUpdate(ts) {
+                    this._raf = null;
+                    if (!this._pending) return;
+                    if (ts - this._lastTS < this._minInterval) {
+                        // schedule next frame
+                        this._raf = requestAnimationFrame(this._rafUpdate.bind(this));
+                        return;
+                    }
+                    this._lastTS = ts;
+                    const { x, y } = this._pending;
+                    this._pending = null;
+
+                    // Set variables on glow element (instance-scoped)
+                    this.glowEl.style.setProperty('--cursor-x', `${x}px`);
+                    this.glowEl.style.setProperty('--cursor-y', `${y}px`);
+
+                    // Update coordinate display (throttled)
+                    if (this.coordEl) {
+                        const pad = v => String(v).padStart(4, '0');
+                        this.coordEl.textContent = `${pad(x)}, ${pad(y)}`;
+                    }
+                }
+
+                destroy() {
+                    if (!this.container) return;
+                    this.container.removeEventListener('mousemove', this._boundMouse);
+                    this.container.removeEventListener('touchmove', this._boundTouch);
+                    if (this._raf) cancelAnimationFrame(this._raf);
+                    this._raf = null;
+                }
+            }
+
+            /* ===========================
+               Clock: updates a DOM element every second
+               =========================== */
+            class Clock {
+                constructor(el, locale = 'en-GB') {
+                    this.el = el;
+                    this.locale = locale;
+                    this._tick = this._tick.bind(this);
+                    this._timer = null;
+                    if (this.el) this.start();
+                }
+                _tick() {
+                    if (!this.el) return;
+                    this.el.textContent = new Date().toLocaleTimeString(this.locale);
+                }
+                start() {
+                    if (this._timer) clearInterval(this._timer);
+                    this._tick();
+                    this._timer = setInterval(this._tick, 1000);
+                }
+                stop() {
+                    if (this._timer) { clearInterval(this._timer); this._timer = null; }
+                }
+            }
+
+            /* ===========================
+               SlideController: instance-level slider controller
+               - binds wheel/touch/keyboard to a container
+               - uses semantic classes: is-active / is-before / is-after
+               - uses transitionend to unlock animations
+               =========================== */
+            class SlideController {
+                constructor(container, options = {}) {
+                    this.container = container;
+                    this.progressEl = options.progressEl || document.getElementById('progress-bar');
+                    this.slides = Array.from(this.container.querySelectorAll('.slide'));
+                    this.total = this.slides.length;
+                    this.current = 0;
+                    this.locked = false;
+                    this.wheelTimeout = null;
+                    this._boundWheel = this._onWheel.bind(this);
+                    this._boundKey = this._onKey.bind(this);
+                    this._boundTouchStart = this._onTouchStart.bind(this);
+                    this._boundTouchEnd = this._onTouchEnd.bind(this);
+                    this._touchStartY = 0;
+                    this._init();
+                }
+
+                _init() {
+                    // ensure data-index are assigned and initial classes set
+                    this.slides.forEach((s, i) => s.dataset.index = i);
+                    // ensure one and only one active
+                    this.current = Math.max(0, Math.min(this.current, this.total - 1));
+                    this._applyStateClasses();
+                    this._updateProgress();
+
+                    // bind events on container (instance-scoped)
+                    this.container.addEventListener('wheel', this._boundWheel, { passive: true });
+                    this.container.addEventListener('touchstart', this._boundTouchStart, { passive: true });
+                    this.container.addEventListener('touchend', this._boundTouchEnd, { passive: true });
+                    window.addEventListener('keydown', this._boundKey, { passive: true });
+
+                    // delegate click actions for elements with data-action
+                    this.container.addEventListener('click', (e) => {
+                        const act = e.target.closest('[data-action]');
+                        if (!act) return;
+                        const action = act.getAttribute('data-action');
+                        if (action === 'next') this.next();
+                        else if (action === 'prev') this.prev();
+                    });
+                }
+
+                _applyStateClasses() {
+                    this.slides.forEach((slide, i) => {
+                        slide.classList.remove('is-active', 'is-before', 'is-after');
+                        if (i === this.current) slide.classList.add('is-active');
+                        else if (i < this.current) slide.classList.add('is-before');
+                        else slide.classList.add('is-after');
+                    });
+                }
+
+                _updateProgress() {
+                    if (!this.progressEl) return;
+                    const percent = ((this.current + 1) / this.total) * 100;
+                    this.progressEl.style.height = `${percent}%`;
+                }
+
+                _onWheel(e) {
+                    if (this.locked) return;
+                    // coarse threshold to avoid tiny scrolls triggering
+                    if (Math.abs(e.deltaY) < 10) return;
+                    if (e.deltaY > 0) this.next();
+                    else this.prev();
+                }
+
+                _onKey(e) {
+                    if (this.locked) return;
+                    if (e.key === 'ArrowDown' || e.key === 'PageDown') this.next();
+                    else if (e.key === 'ArrowUp' || e.key === 'PageUp') this.prev();
+                }
+
+                _onTouchStart(e) {
+                    if (!e.touches || e.touches.length === 0) return;
+                    this._touchStartY = e.touches[0].clientY;
+                }
+
+                _onTouchEnd(e) {
+                    if (this.locked) return;
+                    const endY = (e.changedTouches && e.changedTouches[0]) ? e.changedTouches[0].clientY : null;
+                    if (endY === null) return;
+                    const diff = this._touchStartY - endY;
+                    if (diff > 50) this.next();
+                    else if (diff < -50) this.prev();
+                }
+
+                next() {
+                    if (this.locked) return;
+                    if (this.current >= this.total - 1) return;
+                    this.go(this.current + 1);
+                }
+
+                prev() {
+                    if (this.locked) return;
+                    if (this.current <= 0) return;
+                    this.go(this.current - 1);
+                }
+
+                go(index) {
+                    if (this.locked) return;
+                    if (index === this.current) return;
+                    index = Math.max(0, Math.min(index, this.total - 1));
+                    const outgoing = this.slides[this.current];
+                    const incoming = this.slides[index];
+
+                    this.locked = true;
+                    this.current = index;
+                    // apply classes
+                    this._applyStateClasses();
+                    this._updateProgress();
+
+                    // use transitionend on incoming slide to unlock (fallback timeout in case transitionend doesn't fire)
+                    const onEnd = (ev) => {
+                        // ensure we only unlock after the main transition (opacity/transform)
+                        this.locked = false;
+                        incoming.removeEventListener('transitionend', onEnd);
+                        if (this._endFallback) { clearTimeout(this._endFallback); this._endFallback = null; }
+                    };
+                    incoming.addEventListener('transitionend', onEnd);
+                    // fallback
+                    this._endFallback = setTimeout(() => {
+                        if (this.locked) {
+                            this.locked = false;
+                            incoming.removeEventListener('transitionend', onEnd);
+                        }
+                    }, (parseFloat(getComputedStyle(incoming).getPropertyValue('--slide-duration')) || 0.8) * 1200);
+                }
+
+                destroy() {
+                    this.container.removeEventListener('wheel', this._boundWheel);
+                    this.container.removeEventListener('touchstart', this._boundTouchStart);
+                    this.container.removeEventListener('touchend', this._boundTouchEnd);
+                    window.removeEventListener('keydown', this._boundKey);
+                }
+            }
+
+            /* ===========================
+               Initialization
+               - Apply corner decoration
+               - Instantiate GridHUD bound to the main slider container and glow element
+               - Instantiate Clock for time display
+               - Instantiate SlideController for the main slider container
+               =========================== */
+            document.addEventListener('DOMContentLoaded', () => {
+                // 1) decorate corners (idempotent)
+                CornerDecorator.apply(document);
+
+                // 2) create GridHUD bound to slider-container
+                const sliderContainer = document.getElementById('slider-container');
+                const glowEl = document.querySelector('.grid[data-layer="glow"]');
+                const coordEl = document.getElementById('coord-display');
+                const gridHUD = new GridHUD({ container: sliderContainer, glowEl, coordEl });
+
+                // 3) clock
+                const clock = new Clock(document.getElementById('time-display'), 'en-GB');
+
+                // 4) slide controller
+                const progressBar = document.getElementById('progress-bar');
+                const slideController = new SlideController(sliderContainer, { progressEl: progressBar });
+
+                // expose for debugging (optional; can be removed)
+                window.__TITAN = {
+                    gridHUD,
+                    clock,
+                    slideController,
+                    CornerDecorator
+                };
+            });
+        })();
+    </script>
+</body>
+
+</html>

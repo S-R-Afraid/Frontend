@@ -1,0 +1,768 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <title>Multi-Instance Dungeon Generator</title>
+    <style>
+        body {
+            background-color: #121212;
+            color: #e0e0e0;
+            font-family: 'Segoe UI', 'Consolas', monospace;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
+            justify-content: center;
+            align-items: flex-start;
+        }
+
+        /* 实例容器样式 */
+        .dungeon-widget {
+            background: #1e1e1e;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+            width: 450px; /* 默认宽度，可拉伸 */
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            border: 1px solid #333;
+            transition: border-color 0.3s;
+        }
+        
+        .dungeon-widget:hover {
+            border-color: #555;
+        }
+
+        /* 头部标题 */
+        .widget-header {
+            background: #252525;
+            padding: 10px 15px;
+            border-bottom: 1px solid #333;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .widget-title { font-weight: bold; color: #bb86fc; font-size: 14px; }
+        .widget-status { font-size: 11px; color: #888; }
+
+        /* 画布区域 */
+        .canvas-container {
+            height: 300px; /* 画布固定高度 */
+            background: #000;
+            position: relative;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow: hidden;
+        }
+        
+        canvas {
+            image-rendering: pixelated;
+            box-shadow: 0 0 20px rgba(0,0,0,0.8);
+        }
+
+        /* 控制面板 */
+        .controls-panel {
+            padding: 15px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            background: #1e1e1e;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        /* 控件样式 */
+        .control-row { display: flex; justify-content: space-between; align-items: center; font-size: 12px; color: #aaa; }
+        .control-group { display: flex; gap: 10px; }
+        
+        input[type="range"] { width: 120px; cursor: pointer; accent-color: #bb86fc; vertical-align: middle; }
+        input[type="number"] { width: 50px; background: #333; border: 1px solid #444; color: #fff; border-radius: 4px; padding: 2px; }
+        select { background: #333; border: 1px solid #444; color: #fff; border-radius: 4px; padding: 4px; font-size: 11px; }
+
+        .val-display { color: #03dac6; font-weight: bold; margin-left: 5px; min-width: 30px; display: inline-block; text-align: right; }
+
+        /* 按钮组 */
+        .btn-group { display: flex; gap: 10px; margin-top: 10px; }
+        button {
+            flex: 1;
+            padding: 8px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 12px;
+            transition: 0.2s;
+        }
+        .btn-run { background: #3700b3; color: white; }
+        .btn-run:hover { background: #6200ea; }
+        .btn-instant { background: #03dac6; color: #000; }
+        .btn-instant:hover { background: #00b3a6; }
+
+        /* 图例 */
+        .legend-row { display: flex; gap: 10px; font-size: 10px; color: #666; justify-content: center; padding-bottom: 5px;}
+        .dot { width: 8px; height: 8px; display: inline-block; margin-right: 3px; }
+
+        /* 滚动条 */
+        .controls-panel::-webkit-scrollbar { width: 6px; }
+        .controls-panel::-webkit-scrollbar-thumb { background: #444; border-radius: 3px; }
+    </style>
+</head>
+<body>
+
+<!-- 实例会插入到这里 -->
+<div id="app-container" style="display:contents;"></div>
+
+<script>
+// ==========================================
+// 全局常量 (不随实例变化)
+// ==========================================
+const TILE = { WALL: 0, FLOOR: 1, DOOR_ROOM: 2, DOOR_CORRIDOR: 3 };
+const DIRS = [{x:0, y:-1}, {x:0, y:1}, {x:-1, y:0}, {x:1, y:0}];
+const BEIGE_COLOR = '#F5F5DC'; 
+const STAGE = { ROOMS: 1, MAZE: 2, CONNECT: 3, PRUNE: 4 }; // 阶段枚举
+
+function getRandomColor(seed) {
+    const hue = (seed * 137.508) % 360;
+    return `hsl(${hue}, 60%, 35%)`; 
+}
+
+// ==========================================
+// 独立的 Dungeon 组件类
+// ==========================================
+class DungeonWidget {
+    constructor(container, config = {}) {
+        // 1. 初始化配置
+        this.config = {
+            title: config.title || "Dungeon Instance",
+            width: config.width || 61,
+            height: config.height || 41,
+            speed: config.speed !== undefined ? config.speed : 5,
+            attempts: config.attempts || 200,
+            roomChance: config.roomChance || 5,
+            corrChance: config.corrChance || 20,
+            removeDeadEnds: config.removeDeadEnds !== undefined ? config.removeDeadEnds : true,
+            targetStage: STAGE.PRUNE // 默认执行到最后
+        };
+
+        // 2. 内部状态
+        this.runId = 0;
+        this.isInstant = false;
+        this.scale = 10;
+        
+        // 数据结构
+        this.grid = [];
+        this.regions = [];
+        this.regionParents = [];
+        this.regionColors = [];
+        this.regionIsRoom = [];
+        this.roomDoorCounts = [];
+        this.maxRegionId = -1;
+
+        // 3. 构建 DOM
+        this.root = document.createElement('div');
+        this.root.className = 'dungeon-widget';
+        container.appendChild(this.root);
+        this.renderUI();
+
+        // 4. 获取 DOM 引用
+        this.canvas = this.root.querySelector('canvas');
+        this.ctx = this.canvas.getContext('2d');
+        this.canvasContainer = this.root.querySelector('.canvas-container');
+        this.statusEl = this.root.querySelector('.widget-status');
+
+        // 5. 绑定事件与观察者
+        this.bindEvents();
+        this.initResizeObserver();
+
+        // 6. 初始运行
+        this.resize(); // 先计算一次尺寸
+        this.generate(false);
+    }
+
+    // --- UI 构建 ---
+    renderUI() {
+        this.root.innerHTML = `
+            <div class="widget-header">
+                <div class="widget-title">${this.config.title}</div>
+                <div class="widget-status">Ready</div>
+            </div>
+            <div class="canvas-container">
+                <canvas></canvas>
+            </div>
+            <div class="controls-panel">
+                <div class="legend-row">
+                    <span><i class="dot" style="background:${BEIGE_COLOR}"></i>已联通</span>
+                    <span><i class="dot" style="background:#cf6679"></i>房间门</span>
+                    <span><i class="dot" style="background:#03dac6"></i>走廊捷径</span>
+                </div>
+                
+                <div class="control-row">
+                    <label>地图尺寸 (W x H)</label>
+                    <div class="control-group">
+                        <input type="number" class="ipt-w" value="${this.config.width}" min="21" step="2">
+                        <span>x</span>
+                        <input type="number" class="ipt-h" value="${this.config.height}" min="21" step="2">
+                    </div>
+                </div>
+
+                <div class="control-row">
+                    <label>动画延迟 (ms)</label>
+                    <div>
+                        <input type="range" class="ipt-speed" min="0" max="100" value="${this.config.speed}">
+                        <span class="val-display val-speed">${this.config.speed}</span>
+                    </div>
+                </div>
+
+                <div class="control-row">
+                    <label>执行截至阶段</label>
+                    <select class="sel-stage">
+                        <option value="1">1. 仅放置房间</option>
+                        <option value="2">2. + 迷宫填充</option>
+                        <option value="3">3. + 区域联通</option>
+                        <option value="4" selected>4. + 移除死胡同 (完整)</option>
+                    </select>
+                </div>
+
+                <div class="control-row">
+                    <label>房间尝试次数</label>
+                    <div>
+                        <input type="range" class="ipt-attempts" min="10" max="1000" value="${this.config.attempts}" step="10">
+                        <span class="val-display val-attempts">${this.config.attempts}</span>
+                    </div>
+                </div>
+
+                <div class="control-row">
+                    <label>走廊/房间回路概率</label>
+                    <div style="display:flex; gap:5px">
+                        <input type="range" class="ipt-corr" min="0" max="100" value="${this.config.corrChance}" style="width:60px">
+                        <input type="range" class="ipt-room" min="0" max="100" value="${this.config.roomChance}" style="width:60px">
+                    </div>
+                </div>
+
+                <div class="control-row">
+                    <label>
+                        <input type="checkbox" class="chk-deadends" ${this.config.removeDeadEnds ? 'checked' : ''}>
+                        移除死胡同
+                    </label>
+                    <span style="font-size:10px; color:#666">Scale: <span class="val-scale">--</span>px</span>
+                </div>
+
+                <div class="btn-group">
+                    <button class="btn-run">▶ 动画生成</button>
+                    <button class="btn-instant">⚡ 瞬间生成</button>
+                </div>
+            </div>
+        `;
+    }
+
+    bindEvents() {
+        const q = (sel) => this.root.querySelector(sel);
+
+        // 尺寸输入
+        const updateSize = () => {
+            let w = parseInt(q('.ipt-w').value);
+            let h = parseInt(q('.ipt-h').value);
+            // 修正为奇数
+            if (w % 2 === 0) w++;
+            if (h % 2 === 0) h++;
+            this.config.width = w;
+            this.config.height = h;
+            this.resize();
+            this.drawFull(true);
+        };
+        q('.ipt-w').onchange = updateSize;
+        q('.ipt-h').onchange = updateSize;
+
+        // 通用滑块绑定
+        const bindSlider = (cls, key, suffix='') => {
+            q(cls).oninput = (e) => {
+                this.config[key] = parseInt(e.target.value);
+                q(cls.replace('ipt', 'val')).innerText = this.config[key] + suffix;
+            };
+        };
+        bindSlider('.ipt-speed', 'speed', 'ms');
+        bindSlider('.ipt-attempts', 'attempts');
+        bindSlider('.ipt-corr', 'corrChance');
+        bindSlider('.ipt-room', 'roomChance');
+
+        // 其他控件
+        q('.chk-deadends').onchange = (e) => this.config.removeDeadEnds = e.target.checked;
+        q('.sel-stage').onchange = (e) => this.config.targetStage = parseInt(e.target.value);
+
+        // 按钮
+        q('.btn-run').onclick = () => this.generate(false);
+        q('.btn-instant').onclick = () => this.generate(true);
+    }
+
+    // --- 智能缩放 (Observer) ---
+    initResizeObserver() {
+        // 使用 ResizeObserver 监听容器大小变化
+        const observer = new ResizeObserver(() => {
+            this.resize();
+            this.drawFull(true); // 重绘以适应新尺寸
+        });
+        observer.observe(this.canvasContainer);
+    }
+
+    resize() {
+        // 1. 获取容器尺寸
+        const cw = this.canvasContainer.clientWidth;
+        const ch = this.canvasContainer.clientHeight;
+        const padding = 20;
+
+        // 2. 计算最大可能的 Scale
+        const scaleX = (cw - padding) / this.config.width;
+        const scaleY = (ch - padding) / this.config.height;
+        let bestScale = Math.floor(Math.min(scaleX, scaleY));
+
+        // 3. 限制范围
+        if (bestScale < 1) bestScale = 1;
+        if (bestScale > 20) bestScale = 20;
+
+        this.scale = bestScale;
+        
+        // 4. 应用
+        this.canvas.width = this.config.width * this.scale;
+        this.canvas.height = this.config.height * this.scale;
+        
+        // 更新 UI 显示
+        this.root.querySelector('.val-scale').innerText = this.scale;
+    }
+
+    // --- 核心算法 ---
+
+    resetData() {
+        this.grid = [];
+        this.regions = [];
+        this.regionParents = [];
+        this.regionColors = [];
+        this.regionIsRoom = [];
+        this.roomDoorCounts = [];
+        this.maxRegionId = -1;
+
+        for(let y=0; y<this.config.height; y++) {
+            this.grid[y] = Array(this.config.width).fill(TILE.WALL);
+            this.regions[y] = Array(this.config.width).fill(-1);
+        }
+        this.drawFull(true);
+    }
+
+    // 并查集相关
+    createRegion(isRoom) {
+        this.maxRegionId++;
+        const id = this.maxRegionId;
+        this.regionParents[id] = id;
+        if (id === 0) this.regionColors[id] = BEIGE_COLOR;
+        else this.regionColors[id] = getRandomColor(id + this.runId); // 随机种子混入 runId
+        this.regionIsRoom[id] = isRoom;
+        this.roomDoorCounts[id] = 0;
+        return id;
+    }
+
+    findSet(i) {
+        if (this.regionParents[i] === i) return i;
+        this.regionParents[i] = this.findSet(this.regionParents[i]);
+        return this.regionParents[i];
+    }
+
+    unionSets(i, j) {
+        const rootI = this.findSet(i);
+        const rootJ = this.findSet(j);
+        if (rootI !== rootJ) {
+            const cI = this.regionColors[rootI];
+            const cJ = this.regionColors[rootJ];
+            if (cI === BEIGE_COLOR) this.regionParents[rootJ] = rootI;
+            else if (cJ === BEIGE_COLOR) this.regionParents[rootI] = rootJ;
+            else this.regionParents[rootJ] = rootI;
+            return true;
+        }
+        return false;
+    }
+
+    getCellColor(rId) {
+        if (rId === -1) return '#000';
+        return this.regionColors[this.findSet(rId)];
+    }
+
+    // 绘图
+    drawFull(force = false) {
+        if (this.isInstant && !force) return;
+        this.ctx.fillStyle = '#000';
+        this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+        for(let y=0; y<this.config.height; y++) {
+            for(let x=0; x<this.config.width; x++) {
+                this.drawCell(x, y, null, true);
+            }
+        }
+    }
+
+    drawCell(x, y, color = null, ignoreInstant = false) {
+        if (this.isInstant && !ignoreInstant) return;
+        const tile = this.grid[y][x];
+        const px = x * this.scale;
+        const py = y * this.scale;
+        const s = this.scale;
+
+        if (tile === TILE.WALL) {
+            this.ctx.fillStyle = '#000';
+            this.ctx.fillRect(px, py, s, s);
+        } else if (tile === TILE.DOOR_ROOM) {
+            this.ctx.fillStyle = '#cf6679';
+            this.ctx.fillRect(px, py, s, s);
+            if(s>4) { this.ctx.strokeStyle='#000'; this.ctx.lineWidth=1; this.ctx.strokeRect(px,py,s,s); }
+        } else if (tile === TILE.DOOR_CORRIDOR) {
+            this.ctx.fillStyle = '#03dac6';
+            this.ctx.fillRect(px, py, s, s);
+        } else {
+            this.ctx.fillStyle = color || this.getCellColor(this.regions[y][x]);
+            this.ctx.fillRect(px, py, s, s);
+        }
+    }
+
+    // 辅助
+    async wait(ms) {
+        if (this.isInstant) return;
+        if (ms <= 0) await new Promise(r => requestAnimationFrame(r));
+        else await new Promise(r => setTimeout(r, ms));
+    }
+    
+    check(id) { if (this.runId !== id) throw 'STOP'; }
+
+    // --- 生成逻辑 ---
+
+    async generate(instant) {
+        this.runId++;
+        const myId = this.runId;
+        this.isInstant = instant;
+        
+        // 修正尺寸
+        if (this.config.width % 2 === 0) this.config.width++;
+        if (this.config.height % 2 === 0) this.config.height++;
+        this.resize(); // 确保尺寸匹配
+        this.resetData();
+
+        try {
+            // Stage 1
+            await this.placeRooms(myId);
+            if (this.config.targetStage <= STAGE.ROOMS) throw 'DONE';
+
+            // Stage 2
+            await this.fillMazes(myId);
+            if (this.config.targetStage <= STAGE.MAZE) throw 'DONE';
+
+            // Stage 3
+            await this.connectRegions(myId);
+            if (this.config.targetStage <= STAGE.CONNECT) throw 'DONE';
+
+            // Stage 4
+            await this.removeDeadEnds(myId);
+            
+            throw 'DONE';
+        } catch (e) {
+            if (e === 'DONE') {
+                this.isInstant = false;
+                this.drawFull(true);
+                this.statusEl.innerText = "Done";
+            } else if (e !== 'STOP') {
+                console.error(e);
+            }
+        }
+    }
+
+    // Step 1: Rooms
+    async placeRooms(id) {
+        this.statusEl.innerText = "Placing Rooms...";
+        for (let i=0; i<this.config.attempts; i++) {
+            this.check(id);
+            const size = (Math.floor(Math.random()*3)+1)*2+1;
+            const rect = Math.floor(Math.random()*(1+size/2))*2;
+            let w = size, h = size;
+            if (Math.random()<0.5) w+=rect; else h+=rect;
+            
+            const x = Math.floor(Math.random()*(this.config.width-w)/2)*2+1;
+            const y = Math.floor(Math.random()*(this.config.height-h)/2)*2+1;
+            
+            if (x<1 || y<1 || x+w >= this.config.width || y+h >= this.config.height) continue;
+            
+            let collide = false;
+            for(let ry=y-1; ry<y+h+1; ry++) {
+                for(let rx=x-1; rx<x+w+1; rx++) {
+                    if (this.grid[ry][rx] !== TILE.WALL) { collide=true; break;}
+                }
+            }
+            if (collide) continue;
+
+            const rId = this.createRegion(true);
+            for(let ry=y; ry<y+h; ry++) {
+                for(let rx=x; rx<x+w; rx++) {
+                    this.grid[ry][rx] = TILE.FLOOR;
+                    this.regions[ry][rx] = rId;
+                }
+            }
+            if (!this.isInstant && this.config.speed > 10) {
+                this.drawFull(); await this.wait(this.config.speed);
+            }
+        }
+        if (!this.isInstant) this.drawFull();
+    }
+
+    // Step 2: Mazes
+    async fillMazes(id) {
+        this.statusEl.innerText = "Filling Mazes...";
+        for(let y=1; y<this.config.height; y+=2) {
+            for(let x=1; x<this.config.width; x+=2) {
+                if (this.grid[y][x] === TILE.WALL) {
+                    this.check(id);
+                    const rId = this.createRegion(false);
+                    await this.growMaze(id, x, y, rId);
+                }
+            }
+        }
+    }
+
+    async growMaze(id, sx, sy, rId) {
+        const stack = [{x:sx, y:sy}];
+        this.grid[sy][sx] = TILE.FLOOR;
+        this.regions[sy][sx] = rId;
+        
+        let frames = 0;
+        while(stack.length > 0) {
+            const curr = stack[stack.length-1];
+            const neighbors = [];
+            for(let d of DIRS) {
+                const nx = curr.x+d.x*2, ny = curr.y+d.y*2;
+                if (nx>0 && ny>0 && nx<this.config.width-1 && ny<this.config.height-1 && this.grid[ny][nx]===TILE.WALL) {
+                    neighbors.push({x:nx, y:ny, dx:d.x, dy:d.y});
+                }
+            }
+            if (neighbors.length>0) {
+                const next = neighbors[Math.floor(Math.random()*neighbors.length)];
+                this.grid[curr.y+next.dy][curr.x+next.dx] = TILE.FLOOR;
+                this.regions[curr.y+next.dy][curr.x+next.dx] = rId;
+                this.grid[next.y][next.x] = TILE.FLOOR;
+                this.regions[next.y][next.x] = rId;
+                stack.push({x:next.x, y:next.y});
+
+                if (frames++ % 20 === 0) this.check(id);
+                if (!this.isInstant && this.config.speed>0 && frames%(this.scale<6?20:5)===0) {
+                    this.drawFull(); await this.wait(this.config.speed/2);
+                }
+            } else { stack.pop(); }
+        }
+        if (!this.isInstant) this.drawFull();
+    }
+
+    // Step 3: Connect
+    async connectRegions(id) {
+        this.statusEl.innerText = "Connecting Regions...";
+        let conns = [];
+        for(let y=1; y<this.config.height-1; y++) {
+            for(let x=1; x<this.config.width-1; x++) {
+                if (this.grid[y][x]===TILE.WALL) {
+                    let rs = [];
+                    if (this.grid[y][x-1]!==0 && this.grid[y][x+1]!==0) rs=[this.regions[y][x-1], this.regions[y][x+1]];
+                    else if (this.grid[y-1][x]!==0 && this.grid[y+1][x]!==0) rs=[this.regions[y-1][x], this.regions[y+1][x]];
+                    if (rs.length===2) conns.push({x,y,rA:rs[0], rB:rs[1]});
+                }
+            }
+        }
+        conns.sort(()=>Math.random()-0.5);
+
+        let keep = true;
+        while(keep) {
+            this.check(id);
+            let bestI = -1, type = 'NONE', targetRoot = -1;
+
+            for(let i=0; i<conns.length; i++) {
+                const c = conns[i];
+                if (!c) continue;
+                
+                // Anti-crowd
+                let crowd = false;
+                for(let d of DIRS) {
+                    let t = this.grid[c.y+d.y][c.x+d.x];
+                    if (t===TILE.DOOR_ROOM || t===TILE.DOOR_CORRIDOR) { crowd=true; break; }
+                }
+                if (crowd) { conns[i]=null; continue; }
+
+                const rootA = this.findSet(c.rA), rootB = this.findSet(c.rB);
+                const beigeA = (this.regionColors[rootA]===BEIGE_COLOR);
+                const beigeB = (this.regionColors[rootB]===BEIGE_COLOR);
+
+                if (rootA !== rootB) {
+                    if ((beigeA && !beigeB) || (!beigeA && beigeB)) {
+                        bestI = i; type='MERGE'; targetRoot = beigeA ? rootB : rootA;
+                        break;
+                    }
+                } else {
+                    if (beigeA && beigeB) {
+                        const isRoomA = this.regionIsRoom[c.rA], isRoomB = this.regionIsRoom[c.rB];
+                        let valid = false;
+                        if (!isRoomA && !isRoomB) {
+                            if (Math.random() < this.config.corrChance/100) valid=true;
+                        } else {
+                            if ((!isRoomA || this.roomDoorCounts[c.rA]<2) && (!isRoomB || this.roomDoorCounts[c.rB]<2)) {
+                                if (Math.random() < this.config.roomChance/100) valid=true;
+                            }
+                        }
+                        if (valid && !this.wouldFormArtifact(c.x, c.y)) {
+                            bestI = i; type='LOOP'; break;
+                        }
+                        if (!valid) conns[i]=null;
+                    }
+                }
+            }
+
+            if (bestI !== -1) {
+                const c = conns[bestI];
+                conns[bestI] = null;
+                const rA = c.rA, rB = c.rB;
+                
+                if (this.regionIsRoom[rA]) this.roomDoorCounts[rA]++;
+                if (this.regionIsRoom[rB]) this.roomDoorCounts[rB]++;
+
+                if (type==='LOOP' && !this.regionIsRoom[rA] && !this.regionIsRoom[rB]) 
+                    this.grid[c.y][c.x] = TILE.DOOR_CORRIDOR;
+                else 
+                    this.grid[c.y][c.x] = TILE.DOOR_ROOM;
+
+                this.drawCell(c.x, c.y);
+
+                if (type==='MERGE') {
+                    await this.animateFlood(c.x, c.y, targetRoot);
+                    this.unionSets(rA, rB);
+                    if (!this.isInstant) { this.drawFull(); await this.wait(this.config.speed); }
+                } else {
+                    await this.wait(this.config.speed/4);
+                }
+            } else {
+                const rem = conns.filter(x=>x!==null);
+                if (rem.length===0 || rem.length===conns.length) keep=false;
+                conns = rem;
+            }
+        }
+    }
+
+    async animateFlood(sx, sy, targetRoot) {
+        if (this.isInstant) return;
+        let q = [{x:sx, y:sy}];
+        let vis = new Set([`${sx},${sy}`]);
+        this.drawCell(sx, sy, BEIGE_COLOR);
+        
+        while(q.length>0) {
+            let nq = [];
+            for(let curr of q) {
+                for(let d of DIRS) {
+                    let nx=curr.x+d.x, ny=curr.y+d.y;
+                    if (nx>=0 && ny>=0 && nx<this.config.width && ny<this.config.height) {
+                        let k = `${nx},${ny}`;
+                        if (!vis.has(k) && this.grid[ny][nx]!==TILE.WALL) {
+                            if (this.findSet(this.regions[ny][nx]) === targetRoot) {
+                                vis.add(k);
+                                nq.push({x:nx, y:ny});
+                                this.drawCell(nx, ny, BEIGE_COLOR);
+                            }
+                        }
+                    }
+                }
+            }
+            q = nq;
+            if (this.config.speed>0) await this.wait(Math.max(5, this.config.speed/2));
+            else await this.wait(0);
+        }
+    }
+
+    // Step 4: Prune
+    async removeDeadEnds(id) {
+        if (!this.config.removeDeadEnds) return;
+        this.statusEl.innerText = "Pruning Dead Ends...";
+        
+        let done = false;
+        while(!done) {
+            done = true;
+            this.check(id);
+            let change = false;
+            for(let y=1; y<this.config.height-1; y++) {
+                for(let x=1; x<this.config.width-1; x++) {
+                    if (this.grid[y][x]!==TILE.FLOOR) continue;
+                    let exits = 0;
+                    for(let d of DIRS) if (this.grid[y+d.y][x+d.x]!==TILE.WALL) exits++;
+                    
+                    if (exits <= 1) {
+                        this.grid[y][x] = TILE.WALL;
+                        this.regions[y][x] = -1;
+                        if (!this.isInstant) {
+                            this.ctx.fillStyle='#000'; this.ctx.fillRect(x*this.scale, y*this.scale, this.scale, this.scale);
+                        }
+                        change = true; done = false;
+                        if (!this.isInstant && this.config.speed>0) await this.wait(Math.max(1, this.config.speed/5));
+                    }
+                }
+            }
+            if (!this.isInstant && change && this.config.speed>0) await this.wait(this.config.speed);
+        }
+
+        // Clean doors
+        for(let y=1; y<this.config.height-1; y++) {
+            for(let x=1; x<this.config.width-1; x++) {
+                let t = this.grid[y][x];
+                if (t===TILE.DOOR_ROOM || t===TILE.DOOR_CORRIDOR) {
+                    let v = false;
+                    if (this.grid[y][x-1]!==0 && this.grid[y][x+1]!==0) v=true;
+                    if (this.grid[y-1][x]!==0 && this.grid[y+1][x]!==0) v=true;
+                    if (!v) {
+                        this.grid[y][x] = TILE.WALL;
+                        if (!this.isInstant) {
+                            this.ctx.fillStyle='#000'; this.ctx.fillRect(x*this.scale, y*this.scale, this.scale, this.scale);
+                            if (this.config.speed>0) await this.wait(10);
+                        }
+                    }
+                }
+            }
+        }
+        if (!this.isInstant) this.drawFull();
+    }
+
+    wouldFormArtifact(x, y) {
+        const isEmpty = (tx, ty) => {
+            if (tx === x && ty === y) return true;
+            if (tx < 0 || ty < 0 || tx >= this.config.width || ty >= this.config.height) return false;
+            return this.grid[ty][tx] !== TILE.WALL; 
+        };
+        if (isEmpty(x-1, y-1) && isEmpty(x, y-1) && isEmpty(x-1, y)) return true; 
+        if (isEmpty(x+1, y-1) && isEmpty(x, y-1) && isEmpty(x+1, y)) return true; 
+        if (isEmpty(x-1, y+1) && isEmpty(x, y+1) && isEmpty(x-1, y)) return true; 
+        if (isEmpty(x+1, y+1) && isEmpty(x, y+1) && isEmpty(x+1, y)) return true; 
+        return false;
+    }
+}
+
+// ==========================================
+// 初始化实例
+// ==========================================
+const container = document.getElementById('app-container');
+
+// 创建几个不同配置的实例
+new DungeonWidget(container, { 
+    title: "标准地牢 (Standard)",
+    width: 61, height: 41, speed: 5 
+});
+
+new DungeonWidget(container, { 
+    title: "巨型地图 (Giant & Fast)",
+    width: 101, height: 81, speed: 0,
+    attempts: 500,
+    roomChance: 10
+});
+
+new DungeonWidget(container, { 
+    title: "高密度回路 (Complex Loops)",
+    width: 51, height: 51, speed: 20,
+    corrChance: 80, roomChance: 50
+});
+
+</script>
+</body>
+</html>

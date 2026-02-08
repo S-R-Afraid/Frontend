@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Configurable Perlin Noise Pattern</title>
+
+    <script src="https://cdn.jsdelivr.net/npm/p5@1.9.3/lib/p5.min.js"></script>
+
+    <style>
+        html,
+        body {
+            margin: 0;
+            padding: 0;
+            background: #eae7df;
+        }
+
+        .wrapper {
+            display: flex;
+            gap: 24px;
+            padding: 24px;
+        }
+
+        .panel {
+            flex: 1;
+            height: 420px;
+            border-radius: 12px;
+            overflow: hidden;
+            background: #f9f4e7;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="wrapper">
+        <div id="patternA" class="panel"></div>
+        <div id="patternB" class="panel"></div>
+    </div>
+
+    <script>
+        /* ===========================
+           NoisePattern (Component)
+           =========================== */
+
+        class NoisePattern {
+            constructor(options) {
+                const container = document.querySelector(options.container);
+
+                const palette = options.palette || ['#000', '#fff'];
+                const density = options.density || 15;
+                const bg = options.background || '#F9F4E7';
+
+                /* ---- Noise parameters ---- */
+                const noiseScale = options.noiseScale ?? 0.002;
+                const noiseTimeScale = options.noiseTimeScale ?? 0.15;
+                const noiseStrength = options.noiseStrength ?? 0.6;
+
+                const sketch = (p) => {
+                    let t = 0;
+                    let area, cellSize;
+                    let cells = [];
+
+                    p.setup = () => {
+                        p.createCanvas(
+                            container.clientWidth,
+                            container.clientHeight
+                        );
+                        p.pixelDensity(window.devicePixelRatio || 1);
+                        rebuild();
+                    };
+
+                    p.windowResized = () => {
+                        p.resizeCanvas(
+                            container.clientWidth,
+                            container.clientHeight
+                        );
+                        rebuild();
+                    };
+
+                    function rebuild() {
+                        cells.length = 0;
+
+                        area = Math.min(p.width, p.height) * 0.92;
+                        cellSize = area / density;
+
+                        const ox = (p.width - area) / 2;
+                        const oy = (p.height - area) / 2;
+
+                        for (let j = 0; j < density; j++) {
+                            for (let i = 0; i < density; i++) {
+                                if ((i + j) % 2 === 0) {
+                                    const x = ox + i * cellSize + cellSize / 2;
+                                    const y = oy + j * cellSize + cellSize / 2;
+
+                                    cells.push(
+                                        new Cell(
+                                            p,
+                                            x,
+                                            y,
+                                            cellSize,
+                                            p.random(palette),
+                                            p.random(1000)
+                                        )
+                                    );
+                                }
+                            }
+                        }
+                    }
+
+                    p.draw = () => {
+                        p.background(bg);
+
+                        cells.forEach(c => c.update(t));
+                        cells.forEach(c => c.draw());
+
+                        t += 0.01;
+                    };
+
+                    /* -------- Cell -------- */
+
+                    class Cell {
+                        constructor(p, x, y, size, color, seed) {
+                            this.p = p;
+                            this.x = x;
+                            this.y = y;
+                            this.size = size;
+                            this.color = color;
+                            this.seed = seed;
+                            this.n = 0;
+                        }
+
+                        update(t) {
+                            this.n = p.noise(
+                                this.x * noiseScale,
+                                this.y * noiseScale,
+                                t * noiseTimeScale + this.seed
+                            );
+                        }
+
+                        draw() {
+                            const p = this.p;
+
+                            /* smoothstep */
+                            const k = this.n * this.n * (3 - 2 * this.n);
+
+                            /* noise → size scale */
+                            const scale = 1 + (k - 0.5) * noiseStrength;
+
+                            p.push();
+                            p.translate(this.x, this.y);
+                            p.stroke('#353535');
+                            p.fill(this.color);
+                            p.ellipse(0, 0, this.size * scale);
+                            p.pop();
+                        }
+                    }
+                };
+
+                new p5(sketch, container);
+            }
+        }
+
+        /* ===========================
+           Instantiate Instances
+           =========================== */
+
+        new NoisePattern({
+            container: '#patternA',
+            density: 14,
+            palette: ['#7B62A3', '#7fc8f8', '#ffe45e', '#ff6392'],
+            noiseScale: 0.018,
+            noiseTimeScale: 1,
+            noiseStrength: 1
+        });
+
+        new NoisePattern({
+            container: '#patternB',
+            density: 22,
+            palette: ['#353535', '#17bebb', '#F9F4E7'],
+            noiseScale: 0.004,
+            noiseTimeScale: 5,
+            noiseStrength: 0.8
+        });
+    </script>
+
+</body>
+
+</html>

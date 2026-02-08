@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="zh">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Crystal Ripple Multi Instance</title>
+    <style>
+        body {
+            margin: 0;
+            background: #080808;
+            display: flex;
+            gap: 24px;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+
+        canvas {
+            background: rgb(0, 0, 0);
+            border-radius: 6px;
+        }
+    </style>
+</head>
+
+<body>
+    <canvas id="grid1"></canvas>
+    <br>
+    <canvas id="grid2"></canvas>
+
+    <!-- 普通 script 引入 -->
+    <script src="Crystal-Ripple.js"></script>
+
+    <script>
+        /* 默认参数实例 */
+        new CrystalRippleGrid("grid1");
+        /*等价于
+        new CrystalRippleGrid("grid1", {
+                rows: 16,//行数
+                cols: 16,//列数
+                bpm: 120,//播放速度
+                canvasSize: 600,//画布大小
+
+                rippleClick: 400,//鼠标按下或拖动绘制时产生的波纹强度
+                ripplePlay: 600,//播放头扫描到激活格子时产生的波纹强度
+                rippleHover: 100,//鼠标悬停（未按下）时产生的波纹强度
+
+                rippleColorClick: [80, 180, 255],//鼠标点击 / 绘制波纹的颜色权重
+                rippleColorPlay: [255, 255, 255],//播放触发波纹的颜色权重
+                rippleColorHover: [60, 120, 180],//鼠标悬停波纹的颜色权重
+
+                cellActiveColor: [255, 255, 255],//被激活（可播放）的格子基础颜色
+                cellInactiveColor: [20, 24, 30],//未激活格子的基础颜色
+
+                damping: 0.7, //波纹高度场的阻尼系数，即波纹传播距离，取值0~1
+                physicsSkip: 3,//物理更新跳帧数，表示每渲染 physicsSkip 帧才计算一次波纹传播。
+                gap: 2,//单元格间距
+
+
+                scaleMode: "pentatonic16",          //模式：自由模式和五阶音阶模式 "free" | "pentatonic16"，后者强制网格为16行
+                rootMidi: 90                // pentatonic 根音（C4 = 60）
+            });
+        */
+        /* 自定义参数实例 */
+
+        new CrystalRippleGrid("grid2", {
+            scaleMode: "free",
+            rows: 12,
+            cols: 24,
+            bpm: 120,
+            rippleColorClick: [255, 15, 15],//鼠标点击 / 绘制波纹的颜色权重
+            rippleColorPlay: [255, 15, 15],//播放触发波纹的颜色权重
+            rippleColorHover: [255, 15, 15],//鼠标悬停波纹的颜色权重
+        });
+
+    </script>
+</body>
+
+</html>

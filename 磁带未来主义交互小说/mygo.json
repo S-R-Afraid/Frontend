@@ -1,0 +1,103 @@
+{
+  "start": {
+    "image": "images/practice_room.jpg",
+    "text": "系统初始化中... \\. \n欢迎进入 \\C[#0f0]{MyGO!!!!! 日常记录系统}。",
+    "options": [
+      {
+        "text": "进入今日日志",
+        "nextNode": "daily_entrance"
+      }
+    ]
+  },
+
+  "daily_entrance": {
+    "image": "images/practice_room2.jpg",
+    "text": "放学后的练习室。夕阳从窗缝照入，落在散乱的乐谱与乐器上。\n灯正蹲在角落看着一块小石头。\n爱音抱着吉他拨片包推门而入：\"今天也要加油哦！\" \nそよ递给灯一张她画的贴纸。\n立希在鼓边轻敲节奏：\"晚上我们把新的节奏再磨一遍。\"\n乐奈抱着零食袋：“练之前……让我先吃点东西。”",
+    "options": [
+      {
+        "text": "提出：明天要不要公开表演？",
+        "nextNode": "choice_public"
+      }
+    ]
+  },
+
+  "choice_public": {
+    "image": "images/question.jpg",
+    "text": "你深呼吸，看着五人。\n\"我在想……我们明天要不要试着公开表演？\" \n爱音眼睛一亮、灯抬起头、立希轻轻停下鼓槌、そよ微微紧张、乐奈咬着零食暂停。\n系统检测到关键分歧点 \\. \n请选择你的方向——",
+    "options": [
+      {
+        "text": "A：试试看。即便不完美，也迈出第一步。",
+        "nextNode": "public_yes"
+      },
+      {
+        "text": "B：再等等。我们还没准备好。",
+        "nextNode": "public_no"
+      }
+    ]
+  },
+
+  "public_yes": {
+    "image": "images/stage_small.jpg",
+    "text": "第二天傍晚，小广场。夕阳映在乐队的影子上。\n第一次公开表演开始——灯轻轻开口，吉他、贝斯、鼓声逐渐加入。\n虽然生涩，但真实而温暖。",
+    "options": [
+      {
+        "text": "继续观看观众反应。",
+        "nextNode": "public_yes_reactions"
+      }
+    ]
+  },
+
+  "public_yes_reactions": {
+    "image": "images/audience.jpg",
+    "text": "演奏结束。\n有些人停下脚步、有些人鼓掌。\n灯的眼里有光，爱音兴奋地喘气，立希调整节奏棒，そよ拍着手指尖发抖，乐奈若无其事地啃着点心。",
+    "options": [
+      {
+        "text": "结局 A1：这是起点。",
+        "nextNode": "ending_A1"
+      },
+      {
+        "text": "结局 A2：有人窃笑，表现不如预期。",
+        "nextNode": "ending_A2"
+      }
+    ]
+  },
+
+  "ending_A1": {
+    "image": "images/light.jpg",
+    "text": "结局 A1：\\C[#0f8]{从迷子到起点}\n掌声不大，却真诚。\n灯轻轻说：“我……想继续唱下去。”\nそよ松了一口气，爱音握拳，立希点头，乐奈舔掉嘴角的饼干屑。\n你们第一次感到：也许，未来真的会开始。",
+    "options": []
+  },
+
+  "ending_A2": {
+    "image": "images/rainy_street.jpg",
+    "text": "结局 A2：\\C[#aaa]{暂时的迷惘}\n几声窃笑从人群里传来。\n回程路上没有人说话。\n灯握紧贴纸与石头。\n爱音强颜欢笑，立希沉默，そよ低着头，乐奈罕见地一句零食也没吃。\n也许，迈出去的一步太早了些。",
+    "options": []
+  },
+
+  "public_no": {
+    "image": "images/practice_room_night.jpg",
+    "text": "你摇头：\"再等等吧，我们还没准备好。\"\n接下来的日子，练习室里是争论、磨合、笑声与沉默的混合。\n爱音努力练习，立希坚持节奏，そよ担心大家太累，乐奈偷偷练 solo，灯任由贴纸在音箱上晃动。",
+    "options": [
+      {
+        "text": "几周后决定录 demo。",
+        "nextNode": "ending_B1"
+      },
+      {
+        "text": "争吵升级，练习暂时停摆。",
+        "nextNode": "ending_B2"
+      }
+    ]
+  },
+
+  "ending_B1": {
+    "image": "images/upload.jpg",
+    "text": "结局 B1：\\C[#0af]{再等等也无妨}\n你们录好了第一份 demo。\n上传后，点赞不多，但评论里有人写：\n“听起来像真实心声。”\n灯的嘴角微微上扬。\n你们没有急着冲进舞台，但至少迈出了温柔的一步。",
+    "options": []
+  },
+
+  "ending_B2": {
+    "image": "images/empty_room.jpg",
+    "text": "结局 B2：\\C[#888]{暂时停摆}\n一次争吵后，练习室变得空无一人。\n只有そよ每天来整理地板，灯没有出现，爱音、乐奈、立希都避而不谈。\n空气像被冻住。\n迷子们再次迷失方向。",
+    "options": []
+  }
+}

@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Symmetric Tile with Rotation</title>
+    <style>
+        html,
+        body {
+            margin: 0;
+            height: 100%;
+            background: #121212;
+        }
+
+        canvas {
+            display: block;
+            width: 100vw;
+            height: 100vh;
+            cursor: pointer;
+        }
+
+        .info {
+            position: fixed;
+            left: 12px;
+            top: 12px;
+            color: #ddd;
+            font-size: 13px;
+            background: rgba(0, 0, 0, .5);
+            padding: 6px 8px;
+            border-radius: 6px;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="info">点击画布重绘 · symmetry: none | x | y | xy | rot2 | rot4</div>
+    <canvas id="c"></canvas>
+
+    <script src="线条符号绘制.js"></script>
+    <script>
+        /* 使用示例 */
+        new SymmetricTile({
+            canvasId: 'c',
+            gridSize: 10,
+            edgesMax: 15,
+            edgesAttempts: 20,
+            edgesBreak: 4,
+            symmetry: 'rot4'   // none / x / y / xy / rot2 / rot4
+        })
+    </script>
+</body>
+
+</html>

@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="utf-8" />
+    <title>SymmetricTile - No Gap</title>
+    <style>
+        html,
+        body {
+            height: 100%;
+            margin: 0;
+            background: #121212;
+            color: #ddd;
+            font-family: system-ui, Segoe UI, Roboto, Helvetica, Arial
+        }
+
+        canvas {
+            display: block;
+            width: 100vw;
+            height: 100vh;
+            cursor: pointer
+        }
+
+        .note {
+            position: fixed;
+            left: 12px;
+            top: 12px;
+            background: rgba(0, 0, 0, 0.5);
+            padding: 8px;
+            border-radius: 6px;
+            font-size: 13px;
+            color: #ddd
+        }
+    </style>
+</head>
+
+<body>
+    <div class="note">点击画布重绘 — 支持 symmetry: none / x / y / xy</div>
+    <canvas id="canvas"></canvas>
+
+    <script>
+        class SymmetricTile {
+            constructor({ canvasId, gridSize = 6, edgesMax = 18, edgesAttempts = 30, edgesBreak = 4, symmetry = 'xy' } = {}) {
+                if (!document.getElementById(canvasId)) throw new Error('canvas not found')
+                this.canvas = document.getElementById(canvasId)
+                this.ctx = this.canvas.getContext('2d')
+
+                this.gridSize = Math.max(2, Math.floor(gridSize))
+                this.edgesMax = Math.max(1, Math.floor(edgesMax))
+                this.edgesAttempts = Math.max(1, Math.floor(edgesAttempts))
+                this.edgesBreak = Math.max(0, Math.floor(edgesBreak))
+                this.symmetry = ['none', 'x', 'y', 'xy'].includes(symmetry) ? symmetry : 'xy'
+
+                this.dirs = [[1, 0], [-1, 0], [0, 1], [0, -1]]
+
+                this._computeDomain()
+                this._bindEvents()
+                this._resize()
+                this.regenerate()
+            }
+
+            // domainNodes is number of nodes in one quadrant along one axis:
+            // domainNodes = floor(gridSize/2) + 1
+            _computeDomain() {
+                const N = this.gridSize
+                const domainNodes = Math.floor(N / 2) + 1
+
+                if (this.symmetry === 'none') {
+                    this.domainW = N
+                    this.domainH = N
+                } else if (this.symmetry === 'x') {
+                    this.domainW = N
+                    this.domainH = domainNodes
+                } else if (this.symmetry === 'y') {
+                    this.domainW = domainNodes
+                    this.domainH = N
+                } else { // xy
+                    this.domainW = domainNodes
+                    this.domainH = domainNodes
+                }
+
+                // start roughly center of domain
+                this.startPoint = [Math.floor(this.domainW / 2), Math.floor(this.domainH / 2)]
+            }
+
+            _bindEvents() {
+                window.addEventListener('resize', () => { this._resize(); this.draw() })
+                this.canvas.addEventListener('mousedown', () => this.regenerate())
+            }
+
+            _resize() {
+                this.canvas.width = window.innerWidth
+                this.canvas.height = window.innerHeight
+            }
+
+            _rand(arr) {
+                return arr[Math.floor(Math.random() * arr.length)]
+            }
+
+            // generate points inside domain coordinates: x in [0..domainW-1], y in [0..domainH-1]
+            getPoints() {
+                let x = this.startPoint[0], y = this.startPoint[1]
+                const points = [[x, y]]
+                const edges = {}
+                const getEdges = (ax, ay) => {
+                    const k = ax + '-' + ay
+                    if (!edges[k]) edges[k] = []
+                    return edges[k]
+                }
+
+                let step = 0, count = 0, needStart = false
+
+                while (step < this.edgesAttempts && count < this.edgesMax) {
+                    if (needStart) {
+                        points.push([x, y]); needStart = false
+                    }
+
+                    const visited = getEdges(x, y)
+
+                    const options = this.dirs.filter(([dx, dy]) => {
+                        const nx = x + dx, ny = y + dy
+                        if (nx < 0 || nx >= this.domainW) return false
+                        if (ny < 0 || ny >= this.domainH) return false
+                        if (visited.some(p => p[0] === nx && p[1] === ny)) return false
+                        return true
+                    })
+
+                    if (!options.length) {
+                        points.push(false)
+                        x = Math.floor(Math.random() * this.domainW)
+                        y = Math.floor(Math.random() * this.domainH)
+                        needStart = true
+                        step++
+                        continue
+                    }
+
+                    const [dx, dy] = this._rand(options)
+                    const px = x, py = y
+                    x += dx; y += dy
+
+                    visited.push([x, y])
+                    getEdges(x, y).push([px, py])
+
+                    points.push([x, y])
+                    count++; step++
+
+                    if (this.edgesBreak > 0 && step % this.edgesBreak === 0) {
+                        points.push(false)
+                        x = Math.floor(Math.random() * this.domainW)
+                        y = Math.floor(Math.random() * this.domainH)
+                        needStart = true
+                    }
+                }
+
+                return points
+            }
+
+            // main: map domain points to pixel coords and draw four mirrored parts without gaps
+            draw() {
+                const ctx = this.ctx
+                ctx.clearRect(0, 0, this.canvas.width, this.canvas.height)
+
+                if (!this.points || this.points.length < 2) return
+
+                ctx.strokeStyle = '#ffffff'
+                ctx.lineWidth = 3
+                ctx.lineCap = 'round'
+                ctx.lineJoin = 'round'
+
+                const S = Math.min(this.canvas.width, this.canvas.height) * 0.85
+                const half = S / 2
+                const ox = (this.canvas.width - S) / 2
+                const oy = (this.canvas.height - S) / 2
+
+                // domainNodes per quadrant (number of nodes along quadrant axis)
+                const domainNodesX = (this.symmetry === 'y' || this.symmetry === 'none') ? this.domainW : this.domainW
+                const domainNodesY = (this.symmetry === 'x' || this.symmetry === 'none') ? this.domainH : this.domainH
+
+                // For quadrant mapping we use domainNodes = floor(gridSize/2)+1
+                const domainNodes = Math.floor(this.gridSize / 2) + 1
+                const stepQ = (domainNodes > 1) ? (half / (domainNodes - 1)) : 0.0
+
+                // convenience mappers: map a domain node (dx,dy) to pixel for each quadrant
+                // domain X indices: 0 .. domainNodes-1 -> left side nodes map to [0 .. half]
+                // right side mapping should be half + (domainNodes-1 - x) * stepQ so that boundary at half is shared.
+                const mapTL = (x, y) => [ox + x * stepQ, oy + y * stepQ]                                   // top-left
+                const mapTR = (x, y) => [ox + half + ((domainNodes - 1 - x) * stepQ), oy + y * stepQ]     // top-right (mirror horizontally)
+                const mapBL = (x, y) => [ox + x * stepQ, oy + half + ((domainNodes - 1 - y) * stepQ)]     // bottom-left (mirror vertically)
+                const mapBR = (x, y) => [ox + half + ((domainNodes - 1 - x) * stepQ), oy + half + ((domainNodes - 1 - y) * stepQ)] // bottom-right
+
+                // Which transforms to draw depends on symmetry mode.
+                // We'll prepare an array of mapping functions accordingly.
+                let mappers = []
+                if (this.symmetry === 'none') {
+                    // full grid — in this mode domain covers whole grid; we map domain nodes to full S square using step = S/(gridSize-1)
+                    const stepFull = (this.gridSize > 1) ? (S / (this.gridSize - 1)) : 0
+                    const mapFull = (x, y) => [ox + x * stepFull, oy + y * stepFull]
+                    mappers = [mapFull]
+                } else if (this.symmetry === 'x') {
+                    // top half domain mapped to top-left and mirrored top-right
+                    mappers = [mapTL, mapTR]
+                } else if (this.symmetry === 'y') {
+                    // left half domain mapped to top-left and mirrored bottom-left
+                    mappers = [mapTL, mapBL]
+                } else { // xy
+                    mappers = [mapTL, mapTR, mapBL, mapBR]
+                }
+
+                // Draw for each mapper: iterate over point segments and map endpoints
+                for (const mapFn of mappers) {
+                    ctx.beginPath()
+                    let started = false
+                    for (let i = 1; i < this.points.length; i++) {
+                        const p1 = this.points[i - 1]
+                        const p2 = this.points[i]
+                        if (!p1 || !p2) {
+                            started = false
+                            continue
+                        }
+                        // p1/p2 are integer domain coordinates. Map them to pixel space via mapFn.
+                        const [ax, ay] = mapFn(p1[0], p1[1])
+                        const [bx, by] = mapFn(p2[0], p2[1])
+                        if (!started) {
+                            ctx.moveTo(ax, ay)
+                            started = true
+                        }
+                        ctx.lineTo(bx, by)
+                    }
+                    ctx.stroke()
+                }
+
+                // For odd gridSize there is a central row/col — if symmetry requires, we may draw central axis lines
+                // but above mapping already includes center nodes (domain includes center index), so nothing extra is needed.
+            }
+
+            regenerate() {
+                this.points = this.getPoints()
+                this.draw()
+            }
+        }
+
+        // usage
+        const inst = new SymmetricTile({
+            canvasId: 'canvas',
+            gridSize: 6,         // try 4,5,6,7,8
+            edgesMax: 15,
+            edgesAttempts: 12,
+            edgesBreak: 4,
+            symmetry: 'xy'       // none | x | y | xy
+        })
+    </script>
+</body>
+
+</html>

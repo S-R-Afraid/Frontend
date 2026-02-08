@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Line Spectrum Progress</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <style>
+        body {
+            margin: 0;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background: #0f0c29;
+            font-family: system-ui, sans-serif;
+            color: #fff;
+        }
+
+        .player {
+            width: 640px;
+        }
+
+        canvas {
+            width: 100%;
+            height: 80px;
+            display: block;
+            cursor: pointer;
+        }
+
+        button {
+            margin-bottom: 12px;
+            padding: 6px 18px;
+            border-radius: 20px;
+            border: 1px solid #00c6ff;
+            background: transparent;
+            color: #00c6ff;
+            cursor: pointer;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="player">
+        <input type="file" id="file" accept="audio/*"><br><br>
+        <button id="play">▶ / ⏸</button>
+        <canvas id="canvas"></canvas>
+        <audio id="audio"></audio>
+    </div>
+
+    <script>
+        const audio = document.getElementById('audio');
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        const file = document.getElementById('file');
+        const playBtn = document.getElementById('play');
+
+        let audioCtx, analyser, source;
+        let spectrum;
+
+        function resize() {
+            canvas.width = canvas.clientWidth;
+            canvas.height = canvas.clientHeight;
+        }
+        resize();
+        window.addEventListener('resize', resize);
+
+        file.onchange = e => {
+            const f = e.target.files[0];
+            if (!f) return;
+            audio.src = URL.createObjectURL(f);
+            initAudio();
+        };
+
+        function initAudio() {
+            if (audioCtx) return;
+
+            audioCtx = new AudioContext();
+            analyser = audioCtx.createAnalyser();
+            analyser.fftSize = 128;
+            spectrum = new Uint8Array(analyser.frequencyBinCount);
+
+            source = audioCtx.createMediaElementSource(audio);
+            source.connect(analyser);
+            analyser.connect(audioCtx.destination);
+
+            draw();
+        }
+
+        playBtn.onclick = () => {
+            audioCtx.resume();
+            audio.paused ? audio.play() : audio.pause();
+        };
+
+        canvas.onclick = e => {
+            if (!audio.duration) return;
+            const ratio = e.offsetX / canvas.width;
+            audio.currentTime = ratio * audio.duration;
+        };
+
+        function draw() {
+            requestAnimationFrame(draw);
+            if (!analyser) return;
+
+            analyser.getByteFrequencyData(spectrum);
+
+            const progress = audio.duration
+                ? audio.currentTime / audio.duration
+                : 0;
+
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            const lineY = canvas.height * 0.75; // 进度线高度
+            const barMax = canvas.height * 0.6;
+            const barWidth = canvas.width / spectrum.length;
+
+            /* 1️⃣ 画进度线 */
+            ctx.lineWidth = 2;
+            ctx.strokeStyle = 'rgba(255,255,255,0.25)';
+            ctx.beginPath();
+            ctx.moveTo(0, lineY);
+            ctx.lineTo(canvas.width, lineY);
+            ctx.stroke();
+
+            ctx.strokeStyle = '#00c6ff';
+            ctx.beginPath();
+            ctx.moveTo(0, lineY);
+            ctx.lineTo(progress * canvas.width, lineY);
+            ctx.stroke();
+
+            /* 2️⃣ 画频谱（从线向上） */
+            for (let i = 0; i < spectrum.length; i++) {
+                const value = spectrum[i] / 255;
+                const h = value * barMax;
+
+                const x = i * barWidth + barWidth * 0.3;
+                const y = lineY - h;
+
+                const played = i / spectrum.length < progress;
+
+                ctx.fillStyle = played
+                    ? 'rgba(0,198,255,0.9)'
+                    : 'rgba(255,255,255,0.3)';
+
+                ctx.fillRect(
+                    x,
+                    y,
+                    barWidth * 0.4,
+                    h
+                );
+            }
+
+            /* 3️⃣ 当前播放点 */
+            ctx.fillStyle = '#00ff88';
+            ctx.fillRect(progress * canvas.width - 1, lineY - 6, 2, 12);
+        }
+    </script>
+
+</body>
+
+</html>

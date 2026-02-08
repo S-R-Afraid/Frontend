@@ -1,0 +1,855 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>CASS_FUTURISM // 框架文档</title>
+
+    <!-- 引入 VT323 用于数字和英文，中文将回退到系统等宽字体 -->
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=VT323&display=swap" rel="stylesheet">
+
+    <style>
+        :root {
+            --phosphor-main: #ffb000;
+            /* 主色：琥珀色 */
+            --phosphor-dim: #996a00;
+            /* 暗部 */
+            --bg-color: #0a0a0a;
+            --screen-bg: #110d00;
+            --code-bg: #1a1500;
+            --scanline-color: rgba(0, 0, 0, 0.5);
+            --crt-curvature: inset 0 0 100px rgba(0, 0, 0, 0.9);
+        }
+
+        /* --- 基础设定 --- */
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: var(--bg-color);
+            color: var(--phosphor-main);
+            /* 字体栈：优先 VT323 (英/数)，然后是常见等宽字体，最后是黑体 */
+            font-family: 'VT323', 'Consolas', 'FZXS12', 'Monaco', 'Microsoft YaHei', 'SimHei', monospace;
+            overflow-x: hidden;
+            min-height: 100vh;
+        }
+
+        /* --- 链接样式 (高亮增强版) --- */
+        a {
+            position: relative;
+            color: var(--phosphor-main);
+            /* 琥珀色 */
+            text-decoration: none;
+            /* 去掉默认下划线 */
+
+            /* 1. 更粗的下划线 */
+            border-bottom: 3px solid var(--phosphor-dim);
+            font-size: 1.4rem;
+            font-weight: bold;
+            /* 加粗文字 */
+            padding: 0 2px;
+            /* 稍微增加一点内边距 */
+            transition: all 0.2s ease;
+        }
+
+        /* 2. 在链接前插入 ">" 符号 */
+        a::before {
+            content: ">";
+            display: inline-block;
+            margin-right: 6px;
+            /* 箭头和文字的距离 */
+            color: var(--phosphor-main);
+            opacity: 0.8;
+            transition: transform 0.2s;
+            font-family: monospace;
+            /* 确保箭头是等宽字体 */
+        }
+
+        /* 3. 悬停交互效果 */
+        a:hover {
+            background-color: var(--phosphor-main);
+            /* 背景填满琥珀色 */
+            color: var(--bg-color);
+            /* 文字变黑 (反色) */
+            border-bottom-color: var(--phosphor-main);
+
+            /* 增加发光，更显眼 */
+            box-shadow: 0 0 15px var(--phosphor-main);
+        }
+
+        /* 悬停时，箭头向右移动一点点 */
+        a:hover::before {
+            transform: translateX(4px);
+            color: var(--bg-color);
+            /* 保持箭头颜色 */
+            /* 注意：因为父元素变反色了，如果不想让箭头也被背景色吞没，
+       通常箭头保持原样或者移出背景区。这里简单的位移效果最好。 */
+        }
+
+        /* --- 核心：全屏 CRT 特效容器 --- */
+        /* --- 强制全屏 CRT 特效层 --- */
+        .crt-force-fullscreen {
+            /* 核心：固定定位，无视父容器，直接锁定浏览器窗口 */
+            position: fixed;
+            top: 0;
+            left: 100;
+
+            /* 核心：强制宽高等于视口宽高 */
+            width: 200vw;
+            height: 200vh;
+
+            /* 确保覆盖在所有内容之上 */
+            z-index: 100;
+
+            /* 关键：允许鼠标穿透，不影响你操作页面内容 */
+            pointer-events: none;
+
+            /* 防止出现滚动条 */
+            overflow: hidden;
+        }
+
+        /* 1. 扫描线纹理 */
+        .crt-scanlines {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(to bottom,
+                    rgba(18, 16, 16, 0) 50%,
+                    rgba(0, 0, 0, 0.25) 50%);
+            background-size: 100% 4px;
+        }
+
+        /* 2. 扫描光带 */
+        .crt-beam {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(to bottom,
+                    transparent 0%,
+                    rgba(255, 255, 255, 0.04) 50%,
+                    /* 稍微调暗一点，以免干扰阅读 */
+                    transparent 100%);
+            background-size: 100% 25%;
+            background-repeat: no-repeat;
+            animation: beam-scan 8s linear infinite;
+            mix-blend-mode: overlay;
+        }
+
+        /* 3. 屏幕微闪 */
+        .crt-flicker {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(255, 176, 0, 0.01);
+            /* 极淡的琥珀色 */
+            animation: flicker 0.15s infinite;
+        }
+
+        /* 4. 四周暗角 (Vignette) */
+        .crt-vignette {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            /* 使用径向渐变，比 box-shadow 性能更好且适应性更强 */
+            background: radial-gradient(circle,
+                    transparent 50%,
+                    rgba(0, 0, 0, 0.2) 80%,
+                    rgba(0, 0, 0, 0.6) 100%);
+        }
+
+        /* 动画定义 */
+        @keyframes beam-scan {
+            0% {
+                background-position: 0 -25vh;
+            }
+
+            100% {
+                background-position: 0 125vh;
+            }
+        }
+
+        @keyframes flicker {
+            0% {
+                opacity: 0.96;
+            }
+
+            50% {
+                opacity: 1;
+            }
+
+            100% {
+                opacity: 0.98;
+            }
+        }
+
+        /* --- 页面布局 --- */
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 40px 20px;
+            position: relative;
+            z-index: 1;
+            text-shadow: 0 0 4px var(--phosphor-dim);
+        }
+
+        /* 导航栏 */
+        nav {
+            display: flex;
+            justify-content: space-between;
+            border-bottom: 2px solid var(--phosphor-main);
+            padding-bottom: 15px;
+            margin-bottom: 50px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            font-size: 1.2rem;
+        }
+
+        .logo {
+            font-weight: bold;
+            letter-spacing: 2px;
+        }
+
+        .nav-links a {
+            margin-left: 20px;
+            border: none;
+        }
+
+        .nav-links a::before {
+            content: "[ ";
+            color: var(--phosphor-dim);
+        }
+
+        .nav-links a::after {
+            content: " ]";
+            color: var(--phosphor-dim);
+        }
+
+        /* Hero 区域 */
+        .hero {
+            margin-bottom: 80px;
+            border: 1px solid var(--phosphor-dim);
+            padding: 40px;
+            background: rgba(255, 176, 0, 0.05);
+        }
+
+        h1 {
+            font-size: 3rem;
+            margin: 0 0 20px 0;
+            line-height: 1.1;
+            text-transform: uppercase;
+        }
+
+        .subtitle {
+            font-size: 1.4rem;
+            color: var(--phosphor-dim);
+            margin-bottom: 30px;
+            display: block;
+            letter-spacing: 1px;
+        }
+
+        /* 按钮 */
+        .btn {
+            display: inline-block;
+            border: 2px solid var(--phosphor-main);
+            padding: 10px 30px;
+            font-size: 1.1rem;
+            cursor: pointer;
+            transition: 0.2s;
+            background: transparent;
+            color: var(--phosphor-main);
+            box-shadow: 0 0 10px rgba(255, 176, 0, 0.2);
+            margin-right: 15px;
+            font-family: inherit;
+            /* 继承字体 */
+        }
+
+        .btn:hover {
+            background: var(--phosphor-main);
+            color: var(--bg-color);
+            box-shadow: 0 0 20px var(--phosphor-main);
+        }
+
+        /* 特性栅格 */
+        .section-title {
+            font-size: 1.8rem;
+            border-bottom: 1px dashed var(--phosphor-dim);
+            padding-bottom: 10px;
+            margin-bottom: 30px;
+            margin-top: 60px;
+            letter-spacing: 2px;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 30px;
+        }
+
+        .card {
+            border: 1px solid var(--phosphor-dim);
+            padding: 20px;
+            transition: transform 0.2s;
+        }
+
+        .card:hover {
+            border-color: var(--phosphor-main);
+            background: rgba(255, 176, 0, 0.05);
+            transform: translateY(-2px);
+        }
+
+        .card h3 {
+            margin-top: 0;
+            font-size: 1.4rem;
+        }
+
+        .card h3::before {
+            content: "> ";
+            color: var(--phosphor-dim);
+        }
+
+        .card p {
+            line-height: 1.6;
+            color: #cc8e00;
+        }
+
+        /* 代码展示 */
+        .code-display {
+            background: var(--code-bg);
+            border: 1px solid var(--phosphor-dim);
+            padding: 20px;
+            font-family: 'Consolas', 'Monaco', monospace;
+            /* 强制代码字体 */
+            font-size: 1rem;
+            overflow-x: auto;
+            white-space: pre;
+            color: #cc8e00;
+            box-shadow: inset 0 0 20px rgba(0, 0, 0, 0.8);
+            line-height: 1.5;
+        }
+
+        .token-key {
+            color: var(--phosphor-main);
+        }
+
+        .token-str {
+            color: #ffeebb;
+        }
+
+        .token-cmd {
+            color: #ff5555;
+        }
+
+        footer {
+            margin-top: 100px;
+            border-top: 2px solid var(--phosphor-dim);
+            padding-top: 20px;
+            padding-bottom: 40px;
+            text-align: center;
+            font-size: 0.9rem;
+            color: var(--phosphor-dim);
+        }
+
+        .cursor::after {
+            content: '█';
+            animation: blink 1s step-end infinite;
+            margin-left: 5px;
+        }
+
+        @keyframes blink {
+
+            0%,
+            100% {
+                opacity: 1;
+            }
+
+            50% {
+                opacity: 0;
+            }
+        }
+
+        @media (max-width: 600px) {
+            h1 {
+                font-size: 2rem;
+            }
+
+            nav {
+                flex-direction: column;
+                gap: 10px;
+                text-align: center;
+            }
+
+            .nav-links a {
+                margin: 0 10px;
+            }
+
+            .btn {
+                display: block;
+                margin: 10px 0;
+                text-align: center;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+
+
+    <div class="container">
+        <nav>
+            <div class="logo">TAPE_FUTURISM // 引擎 v5.2</div>
+            <div class="nav-links">
+                <a href="#features">特性</a>
+                <a href="#docs">文档</a>
+                <a href="https://www.wenzhimo.xyz/交互式小说-磁带未来主义/" target="_blank" onclick="alert('将访问 https://www.wenzhimo.xyz/交互式小说-磁带未来主义/ 获取源码')">下载</a>
+            </div>
+        </nav>
+
+        <section class="hero">
+            <h1 id="typing-header"></h1>
+            <span class="subtitle">专为模拟时代打造的轻量级交互小说引擎。</span>
+            <div style="margin-top: 30px">
+                <a href="index.html" class="btn">启动演示 (Demo)</a>
+                <a href="editor.html" class="btn" style="border-style: dashed">打开编辑器</a>
+            </div>
+        </section>
+
+        <section id="features">
+            <div class="section-title">SYSTEM_CAPABILITIES // 系统能力</div>
+            <div class="grid">
+                <div class="card">
+                    <h3>JSON 数据驱动</h3>
+                    <p>
+                        逻辑与代码完全分离。使用简单的 JSON
+                        文件编写您的故事。支持本地文件热加载与自动读取。
+                    </p>
+                </div>
+                <div class="card">
+                    <h3>富文本解析器</h3>
+                    <p>
+                        内置自定义语法解析：支持<span style="color: #fff">高亮颜色</span>、<span
+                            style="text-decoration: underline">下划线</span>、<span
+                            style="text-decoration: line-through">删除线</span>，以及可控的打字机停顿效果。
+                    </p>
+                </div>
+                <div class="card">
+                    <h3>复古视觉核心</h3>
+                    <p>
+                        基于 CSS3 的纯代码视觉特效：模拟 80 年代 CRT
+                        显示器的扫描线、电子束辉光及信号噪点。
+                    </p>
+                </div>
+                <div class="card">
+                    <h3>可视化编辑器</h3>
+                    <p>
+                        包含一个独立的单文件节点编辑器。支持拖拽连线、实时图片预览及 JSON
+                        导出。
+                    </p>
+                </div>
+            </div>
+        </section>
+
+        <section id="docs">
+            <div class="section-title">DATA_PROTOCOL // 数据协议示例</div>
+            <p>请遵循以下协议定义您的故事节点：</p>
+
+            <div class="code-display">
+                {
+                <span class="token-key">"start"</span>: {
+                <span class="token-key">"image"</span>:
+                <span class="token-str">"images/city_ruins.jpg"</span>,
+                <span class="token-key">"text"</span>:
+                <span class="token-str">"系统初始化中... <span class="token-cmd">\\.</span> \n欢迎来到
+                    <span class="token-cmd">\\C[#0f0]{第七扇区}</span>。"</span>, <span class="token-key">"options"</span>: [
+                {
+                <span class="token-key">"text"</span>:
+                <span class="token-str">"检查系统日志"</span>,
+                <span class="token-key">"nextNode"</span>:
+                <span class="token-str">"logs_entry"</span>
+                } ] } }
+            </div>
+
+            <p style="
+            margin-top: 20px;
+            color: var(--phosphor-dim);
+            font-size: 0.9rem;
+          ">
+                * 使用 <span class="token-cmd">\\.</span> 插入 0.5 秒的打字停顿。<br />
+                * 使用
+                <span class="token-cmd">\\C[color]{...}</span> 改变文字颜色。<br />
+                * 图片将自动应用 16-bit 像素化与 CRT 滤镜处理。
+            </p>
+        </section>
+
+        <footer>
+            <p>
+                版权所有 © 2024 磁带未来实验室 (CASSETTE FUTURISM LABS)<br />
+                信号丢失... 传输结束。
+            </p>
+        </footer>
+    </div>
+
+
+    <script>
+        /**
+         * CRTMonitorFX v5.0 - 独立配置面板版
+         * 特性：单独控制每一种特效的开关，带状态记忆 UI
+         */
+        class CRTMonitorFX {
+            constructor() {
+                this.prefix = 'crt-fx';
+                this.config = {
+                    minInterval: 15000,
+                    maxInterval: 25000,
+                    minDuration: 100,
+                    maxDuration: 400
+                };
+
+                // 定义所有可配置的特效
+                this.settings = {
+                    glitch: true,   // 随机剧烈故障
+                    rgb: true,      // 静态文字色差
+                    beam: true,     // 扫描光带
+                    flicker: true,  // 屏幕微闪
+                    lines: true,    // 扫描线
+                    vignette: true  // 暗角
+                };
+
+                // 从本地存储加载配置
+                this.loadSettings();
+
+                this.panelOpen = false; // 面板默认折叠
+                this.init();
+            }
+
+            loadSettings() {
+                const saved = localStorage.getItem('crt_fx_settings');
+                if (saved) {
+                    try {
+                        const parsed = JSON.parse(saved);
+                        // 合并保存的配置，防止版本更新后缺少新字段
+                        this.settings = { ...this.settings, ...parsed };
+                    } catch (e) { console.error('Settings load error', e); }
+                }
+            }
+
+            saveSettings() {
+                localStorage.setItem('crt_fx_settings', JSON.stringify(this.settings));
+            }
+
+            init() {
+                if (document.readyState === 'loading') {
+                    document.addEventListener('DOMContentLoaded', () => this.build());
+                } else {
+                    this.build();
+                }
+            }
+
+            build() {
+                if (document.getElementById(`${this.prefix}-container`)) return;
+                this.injectStyles();
+                this.createOverlay();
+                this.createConfigPanel();
+                this.applySettings(); // 应用当前设置
+                this.startGlitchLoop();
+            }
+
+            injectStyles() {
+                const style = document.createElement('style');
+                style.id = `${this.prefix}-style`;
+
+                const keyframes = `
+            @keyframes ${this.prefix}-glitch-anim {
+                0% { text-shadow: 4px 0 rgba(255,0,0,0.8), -4px 0 rgba(0,255,255,0.8), 0 0 0 var(--phosphor-main); transform: skewX(10deg); }
+                20% { text-shadow: -4px 2px rgba(255,0,0,0.8), 4px -2px rgba(0,255,255,0.8), 0 0 0 var(--phosphor-main); transform: skewX(-10deg); }
+                40% { text-shadow: 0 4px rgba(255,0,0,0.8), 0 -4px rgba(0,255,255,0.8), 0 0 0 var(--phosphor-main); transform: skewX(5deg); }
+                60% { text-shadow: 2px -4px rgba(255,0,0,0.8), -2px 4px rgba(0,255,255,0.8), 0 0 0 var(--phosphor-main); transform: skewX(0deg); }
+                80% { text-shadow: -2px 0 rgba(255,0,0,0.8), 2px 0 rgba(0,255,255,0.8), 0 0 0 var(--phosphor-main); transform: skewX(-5deg); }
+                100% { text-shadow: 1px 0 rgba(255,0,0,0.8), -1px 0 rgba(0,255,255,0.8), 0 0 0 var(--phosphor-main); transform: skewX(0deg); }
+            }
+            @keyframes ${this.prefix}-beam { 0% { background-position: 0 -100vh; } 100% { background-position: 0 200vh; } }
+            @keyframes ${this.prefix}-flicker { 0% { opacity: 0.96; } 50% { opacity: 1; } 100% { opacity: 0.98; } }
+        `;
+
+                const css = `
+            /* --- 基础状态 --- */
+            body {
+                overflow-x: hidden;
+                background-color: #000;
+                transition: color 0.05s, text-shadow 0.05s;
+            }
+
+            /* --- 状态控制类 (由 JS 切换) --- */
+            
+            /* RGB 开关：控制静态文字色差 */
+            body:not(.${this.prefix}-no-rgb) {
+                text-shadow: 8px 0 rgba(255,0,0,0.2), -2px 0 rgba(0,255,255,0.2);
+            }
+
+            /* 故障状态 (Glitch) */
+            body.${this.prefix}-glitch-now {
+                color: transparent !important;
+                animation: ${this.prefix}-glitch-anim 0.2s infinite linear;
+            }
+            /* 故障时的全屏噪点遮罩 */
+            body.${this.prefix}-glitch-now::after {
+                content: ""; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+                z-index: 2147483647;
+                background: repeating-linear-gradient(0deg, rgba(0,0,0,0.1), rgba(0,0,0,0.1) 2px, rgba(255, 0, 0, 0.1) 3px, rgba(0, 255, 255, 0.1) 4px);
+                pointer-events: none; mix-blend-mode: hard-light;
+            }
+
+            /* --- 遮罩层组件 --- */
+            .${this.prefix}-layer {
+                position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+                z-index: 2147483646; pointer-events: none; overflow: hidden;
+            }
+            .${this.prefix}-scanlines {
+                position: absolute; inset: 0;
+                background: linear-gradient(to bottom, rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%);
+                background-size: 100% 4px;
+            }
+            .${this.prefix}-beam {
+                position: absolute; inset: 0;
+                background: linear-gradient(to bottom, transparent 0%, rgba(255, 255, 255, 0.03) 50%, transparent 100%);
+                background-size: 100% 30%;
+                background-repeat: no-repeat;
+                animation: ${this.prefix}-beam 8s linear infinite;
+                mix-blend-mode: overlay;
+            }
+            .${this.prefix}-flicker {
+                position: absolute; inset: 0;
+                background: rgba(255, 176, 0, 0.01);
+                animation: ${this.prefix}-flicker 0.15s infinite;
+            }
+            .${this.prefix}-vignette {
+                position: absolute; inset: 0;
+                background: radial-gradient(circle, transparent 50%, rgba(0, 0, 0, 0.2) 80%, rgba(0, 0, 0, 0.8) 100%);
+            }
+
+            /* --- 禁用特定特效的辅助类 --- */
+            body.${this.prefix}-no-beam .${this.prefix}-beam { display: none !important; }
+            body.${this.prefix}-no-flicker .${this.prefix}-flicker { display: none !important; }
+            body.${this.prefix}-no-lines .${this.prefix}-scanlines { display: none !important; }
+            body.${this.prefix}-no-vignette .${this.prefix}-vignette { display: none !important; }
+
+            /* --- 配置面板样式 --- */
+            #${this.prefix}-panel {
+                position: fixed; top: 20px; right: 20px;
+                z-index: 2147483648;
+                font-family: monospace; font-size: 12px;
+                color: var(--phosphor-main, #ffb000);
+                user-select: none;
+                display: flex; flex-direction: column; align-items: flex-end;
+            }
+            
+            #${this.prefix}-toggle-btn {
+                background: rgba(0, 0, 0, 0.8);
+                border: 1px solid currentColor;
+                padding: 5px 10px;
+                cursor: pointer;
+                box-shadow: 0 0 5px currentColor;
+                margin-bottom: 5px;
+            }
+            #${this.prefix}-toggle-btn:hover { background: var(--phosphor-main, #ffb000); color: #000; }
+
+            #${this.prefix}-menu {
+                background: rgba(0, 0, 0, 0.9);
+                border: 1px solid currentColor;
+                padding: 10px;
+                box-shadow: 0 0 10px currentColor;
+                display: none; /* 默认隐藏 */
+                flex-direction: column;
+                gap: 5px;
+                min-width: 120px;
+            }
+            #${this.prefix}-menu.open { display: flex; }
+
+            .crt-option-row {
+                display: flex; justify-content: space-between;
+                cursor: pointer; padding: 2px 4px;
+            }
+            .crt-option-row:hover { background: rgba(255,255,255,0.1); }
+            .crt-check { font-weight: bold; margin-right: 10px; }
+            .crt-label { opacity: 0.9; }
+        `;
+
+                style.textContent = keyframes + css;
+                document.head.appendChild(style);
+            }
+
+            createOverlay() {
+                const container = document.createElement('div');
+                container.id = `${this.prefix}-container`;
+                container.className = `${this.prefix}-layer`;
+                ['scanlines', 'beam', 'flicker', 'vignette'].forEach(name => {
+                    const div = document.createElement('div');
+                    div.className = `${this.prefix}-${name}`;
+                    container.appendChild(div);
+                });
+                document.body.appendChild(container);
+            }
+
+            // --- 创建配置面板 UI ---
+            createConfigPanel() {
+                const panel = document.createElement('div');
+                panel.id = `${this.prefix}-panel`;
+
+                // 1. 主按钮 [ SYSTEM CONFIG ]
+                const toggleBtn = document.createElement('div');
+                toggleBtn.id = `${this.prefix}-toggle-btn`;
+                toggleBtn.innerText = "[ SYSTEM CONFIG ]";
+                toggleBtn.onclick = () => {
+                    this.panelOpen = !this.panelOpen;
+                    menu.classList.toggle('open', this.panelOpen);
+                };
+
+                // 2. 下拉菜单
+                const menu = document.createElement('div');
+                menu.id = `${this.prefix}-menu`;
+
+                // 3. 生成各个选项
+                // key: settings里的键, label: 显示名称
+                const options = [
+                    { key: 'glitch', label: '故障闪烁动画' },
+                    { key: 'rgb', label: 'RGB色差分离' },
+                    { key: 'beam', label: '动态扫描线' },
+                    { key: 'flicker', label: '屏幕微闪' },
+                    { key: 'lines', label: '扫描线纹理' },
+                    { key: 'vignette', label: '暗角' }
+                ];
+
+                options.forEach(opt => {
+                    const row = document.createElement('div');
+                    row.className = 'crt-option-row';
+                    row.onclick = () => this.toggleSetting(opt.key, row);
+
+                    // 状态图标 [x] 或 [ ]
+                    const check = document.createElement('span');
+                    check.className = 'crt-check';
+                    check.innerText = this.settings[opt.key] ? '[x]' : '[ ]';
+
+                    const label = document.createElement('span');
+                    label.className = 'crt-label';
+                    label.innerText = opt.label;
+
+                    row.appendChild(check);
+                    row.appendChild(label);
+                    menu.appendChild(row);
+
+                    // 绑定DOM引用以便更新
+                    opt.dom = check;
+                });
+                // 把 options 挂在实例上方便 update 使用
+                this.menuOptions = options;
+
+                panel.appendChild(toggleBtn);
+                panel.appendChild(menu);
+                document.body.appendChild(panel);
+            }
+
+            // --- 逻辑控制 ---
+
+            toggleSetting(key, rowDom) {
+                this.settings[key] = !this.settings[key];
+                this.saveSettings();
+                this.applySettings();
+
+                // 更新 UI
+                const opt = this.menuOptions.find(o => o.key === key);
+                if (opt && opt.dom) {
+                    opt.dom.innerText = this.settings[key] ? '[x]' : '[ ]';
+                }
+            }
+
+            applySettings() {
+                const body = document.body;
+                const p = this.prefix;
+
+                // 处理 RGB 文字色差 (通过添加/移除类名控制)
+                if (this.settings.rgb) body.classList.remove(`${p}-no-rgb`);
+                else body.classList.add(`${p}-no-rgb`);
+
+                // 处理 视觉元素 (Beam, Flicker, Lines, Vignette)
+                if (this.settings.beam) body.classList.remove(`${p}-no-beam`);
+                else body.classList.add(`${p}-no-beam`);
+
+                if (this.settings.flicker) body.classList.remove(`${p}-no-flicker`);
+                else body.classList.add(`${p}-no-flicker`);
+
+                if (this.settings.lines) body.classList.remove(`${p}-no-lines`);
+                else body.classList.add(`${p}-no-lines`);
+
+                if (this.settings.vignette) body.classList.remove(`${p}-no-vignette`);
+                else body.classList.add(`${p}-no-vignette`);
+
+                // Glitch 是逻辑触发的，不需要在这里处理 CSS，只在 trigger 时判断
+            }
+
+            startGlitchLoop() {
+                const nextDelay = Math.random() * (this.config.maxInterval - this.config.minInterval) + this.config.minInterval;
+                setTimeout(() => {
+                    // 只有当 glitch 设置为 true 时才触发
+                    if (this.settings.glitch) {
+                        this.triggerGlitch();
+                    }
+                    this.startGlitchLoop();
+                }, nextDelay);
+            }
+
+            triggerGlitch() {
+                if (!this.settings.glitch) return;
+
+                document.body.classList.add(`${this.prefix}-glitch-now`);
+                const duration = Math.random() * (this.config.maxDuration - this.config.minDuration) + this.config.minDuration;
+                setTimeout(() => {
+                    document.body.classList.remove(`${this.prefix}-glitch-now`);
+                }, duration);
+            }
+        }
+
+        new CRTMonitorFX();
+    </script>
+    <script>
+        // 打字机脚本
+        const textToType = "重写过去。 \\. 模拟未来。";
+        const headerElement = document.getElementById("typing-header");
+        let charIndex = 0;
+
+        function typeHeader() {
+            if (charIndex < textToType.length) {
+                // 简单的解析器，遇到 \. 时停顿
+                if (textToType.substring(charIndex, charIndex + 3) === "\\. ") {
+                    setTimeout(typeHeader, 500);
+                    charIndex += 3;
+                    return;
+                }
+
+                headerElement.innerHTML += textToType.charAt(charIndex);
+                headerElement.classList.add("cursor");
+                charIndex++;
+                setTimeout(typeHeader, 150); // 中文打字稍微慢一点更有感觉
+            } else {
+                // 结束
+            }
+        }
+
+        window.onload = () => {
+            setTimeout(typeHeader, 800);
+        };
+    </script>
+
+</body>
+
+</html>

@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8" />
+    <script src="https://cdn.jsdelivr.net/npm/p5@1.11.7/lib/p5.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/p5@1.11.7/lib/addons/p5.sound.min.js"></script>
+    <script>
+        /* =========================
+       全局配置
+    ========================= */
+
+        let P = {
+            tiles: 5,
+            padding: 0.2,
+            edgesMax: 15,
+            edgesAttempts: 20,
+            edgesBreak: 4,
+            innerGrid: 3,
+            startPoint: [1, 1],
+            symmetry: 'reflect' // 'reflect' | 'rotate'
+        }
+
+        /* =========================
+           路径生成逻辑
+        ========================= */
+
+        let directions = [
+            [1, 0],
+            [0, -1],
+            [0, 1],
+            [-1, 0],
+        ]
+
+        function getPoints() {
+            let [x, y] = P.startPoint
+            let points = [[x, y]]
+            let edges = {}
+
+            let xMax = P.innerGrid
+            let yMax = P.innerGrid
+
+            const getEdges = (x, y) => {
+                let key = `${x}-${y}`
+                if (!edges[key]) edges[key] = []
+                return edges[key]
+            }
+
+            let i = 0
+            let pointsCount = 0
+            let needToPushPoint1 = false
+
+            while (i < P.edgesAttempts && pointsCount < P.edgesMax) {
+                let visited = getEdges(x, y)
+
+                let options = directions.filter(([dx, dy]) => {
+                    let nx = x + dx
+                    let ny = y + dy
+
+                    if (nx < 0 || nx > xMax) return false
+                    if (ny < 0 || ny > yMax) return false
+                    if (visited.find(([vx, vy]) => vx === nx && vy === ny)) return false
+
+                    return true
+                })
+
+                // 无路可走：断笔并随机跳点
+                if (options.length === 0) {
+                    points.push(false)
+                    x = Math.floor(Math.random() * (xMax + 1))
+                    y = Math.floor(Math.random() * (yMax + 1))
+                    points.push([x, y])
+                    i++
+                    continue
+                }
+
+                // break 后补起点
+                if (needToPushPoint1) {
+                    points.push([x, y])
+                    needToPushPoint1 = false
+                    pointsCount++
+                }
+
+                let prevX = x
+                let prevY = y
+
+                let [dx, dy] = random(options)
+                x += dx
+                y += dy
+
+                visited.push([x, y])
+                getEdges(x, y).push([prevX, prevY])
+
+                points.push([x, y])
+                pointsCount++
+                i++
+
+                // 周期性强制断笔
+                if (i % P.edgesBreak === 0) {
+                    points.push(false)
+                    x = Math.floor(Math.random() * (xMax + 1))
+                    y = Math.floor(Math.random() * (yMax + 1))
+                    needToPushPoint1 = true
+                }
+            }
+
+            return { points, edges }
+        }
+
+        /* =========================
+           绘制逻辑
+        ========================= */
+
+        let pointsData = []
+
+        function quadrant(points, size) {
+            let step = size / P.innerGrid
+            strokeWeight(3)
+            stroke('#ffffff')
+
+            for (let i = 1; i < points.length; i++) {
+                let p1 = points[i - 1]
+                let p2 = points[i]
+                if (p1 === false || p2 === false) continue
+
+                let [x1, y1] = p1
+                let [x2, y2] = p2
+                line(x1 * step, y1 * step, x2 * step, y2 * step)
+            }
+        }
+
+        function mirroredQuadrants(points, size) {
+            let step = size / 2
+            push()
+            translate(step, step)
+
+            if (P.symmetry === 'reflect') {
+                scale(1, -1)
+                quadrant(points, step)
+                scale(1, -1)
+                quadrant(points, step)
+                scale(-1, 1)
+                quadrant(points, step)
+                scale(1, -1)
+                quadrant(points, step)
+            } else {
+                quadrant(points, step)
+                rotate(HALF_PI)
+                quadrant(points, step)
+                rotate(HALF_PI)
+                quadrant(points, step)
+                rotate(HALF_PI)
+                quadrant(points, step)
+            }
+
+            pop()
+        }
+
+        /* =========================
+           p5 生命周期
+        ========================= */
+
+        function setup() {
+            createCanvas(windowWidth, windowHeight)
+            regenerate()
+            noLoop()
+        }
+
+        function draw() {
+            background('#121212')
+
+            let m = min(width, height) * 0.85
+            let blockStep = m / P.tiles
+            let padding = blockStep * P.padding
+            let blockSize = blockStep - padding * 2
+
+            push()
+            translate((width - m) / 2, (height - m) / 2)
+
+            pointsData.forEach(({ points }, i) => {
+                let x = i % P.tiles
+                let y = floor(i / P.tiles)
+                push()
+                translate(x * blockStep + padding, y * blockStep + padding)
+                mirroredQuadrants(points, blockSize)
+                pop()
+            })
+
+            pop()
+        }
+
+        function regenerate() {
+            pointsData = []
+            for (let i = 0; i < P.tiles ** 2; i++) {
+                pointsData.push(getPoints())
+            }
+            redraw()
+        }
+
+        function mousePressed() {
+            regenerate()
+        }
+
+        function windowResized() {
+            resizeCanvas(windowWidth, windowHeight)
+            redraw()
+        }
+
+    </script>
+    <link rel="stylesheet" type="text/css" href="style.css">
+</head>
+
+<body>
+
+</body>
+
+</html>

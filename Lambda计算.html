@@ -1,0 +1,489 @@
+<!DOCTYPE html>
+<html lang="zh">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lambda Visualizer v3 (Arithmetic Support)</title>
+    <style>
+        :root {
+            --bg-color: #f0f2f5;
+            --card-bg: #ffffff;
+            --primary: #2c3e50;
+            --accent: #3498db;
+        }
+
+        body {
+            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg-color);
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            height: 100vh;
+            color: #333;
+        }
+
+        h1 {
+            margin: 0 0 5px 0;
+            color: var(--primary);
+        }
+
+        .subtitle {
+            margin-bottom: 20px;
+            color: #666;
+            font-size: 0.9rem;
+        }
+
+        /* Control Panel */
+        .controls {
+            background: var(--card-bg);
+            padding: 15px 25px;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            justify-content: center;
+            align-items: center;
+            margin-bottom: 15px;
+            width: 100%;
+            max-width: 900px;
+            box-sizing: border-box;
+        }
+
+        input[type="text"] {
+            padding: 10px 15px;
+            width: 250px;
+            border: 2px solid #eee;
+            border-radius: 6px;
+            font-family: monospace;
+            font-size: 1.1rem;
+            transition: border 0.2s;
+        }
+
+        input[type="text"]:focus {
+            outline: none;
+            border-color: var(--accent);
+        }
+
+        button {
+            padding: 10px 20px;
+            background-color: var(--primary);
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: transform 0.1s, background 0.2s;
+        }
+
+        button:hover {
+            background-color: #34495e;
+            transform: translateY(-1px);
+        }
+
+        button:active {
+            transform: translateY(0);
+        }
+
+        button.secondary {
+            background-color: #95a5a6;
+        }
+
+        button.highlight {
+            background-color: #e67e22;
+        }
+
+        /* Visualization Area */
+        #canvas-wrapper {
+            flex-grow: 1;
+            width: 100%;
+            max-width: 1200px;
+            background: var(--card-bg);
+            border-radius: 12px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.05);
+            overflow: auto;
+            position: relative;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+            border: 1px solid #eee;
+        }
+
+        .status-bar {
+            margin-top: 10px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 5px;
+            font-size: 0.9rem;
+            color: #555;
+            text-align: center;
+        }
+
+        .translation-preview {
+            font-family: monospace;
+            background: #eef;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 0.8rem;
+            color: #444;
+            max-width: 800px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        /* SVG & Animation */
+        svg {
+            transition: width 0.3s, height 0.3s;
+        }
+
+        line,
+        circle {
+            transition: all 0.5s cubic-bezier(0.25, 0.8, 0.25, 1);
+        }
+
+        .lambda-bar {
+            stroke-width: 6;
+            stroke-linecap: round;
+        }
+
+        .var-line {
+            stroke-width: 3;
+            stroke-linecap: round;
+        }
+    </style>
+</head>
+
+<body>
+
+    <h1>Lambda Arithmetic Visualizer</h1>
+    <p class="subtitle">Supports standard Lambda (\x.x) and Sugar (1 + 1, 2 * 3)</p>
+
+    <div class="controls">
+        <input type="text" id="inputExpr" value="1 + 1" placeholder="e.g. 1 + 1 or \x.x">
+        <button onclick="parseAndDraw()">Reset</button>
+        <button onclick="step()" class="secondary">Step</button>
+        <button onclick="toggleAuto()" id="btnAuto" class="highlight">Run Animation</button>
+        <select id="presets" onchange="loadPreset()" style="padding: 10px; border-radius: 6px; border: 1px solid #eee;">
+            <option value="">-- Quick Load --</option>
+            <option value="1 + 1">1 + 1 (Addition)</option>
+            <option value="2 * 2">2 * 2 (Multiplication)</option>
+            <option value="(\x.x x)(\x.x x)">Omega (Loop)</option>
+            <option value="(\f.\x.f (f x))">Number 2 (Structure)</option>
+            <option value="(\x.\y.\z.x z (y z)) (\x.\y.x) (\x.x)">S K I -> I</option>
+        </select>
+    </div>
+
+    <div class="status-bar">
+        <div id="statusText">Ready</div>
+        <div id="translation" class="translation-preview"></div>
+    </div>
+
+    <div id="canvas-wrapper">
+        <svg id="mainSvg"></svg>
+    </div>
+
+    <script>
+        // --- 0. LIBRARY & SUGAR (NEW FEATURE) ---
+        const LIB = {
+            // Church Operators
+            'PLUS': '(\\m.\\n.\\f.\\x.m f (n f x))',
+            'MULT': '(\\m.\\n.\\f.m (n f))',
+            'POW': '(\\b.\\e.e b)',
+            'SUCC': '(\\n.\\f.\\x.f (n f x))',
+            // Logic (Standard)
+            'TRUE': '(\\x.\\y.x)',
+            'FALSE': '(\\x.\\y.y)'
+        };
+
+        function generateChurchNum(n) {
+            let body = 'x';
+            for (let i = 0; i < n; i++) body = `f (${body})`;
+            return `(\\f.\\x.${body})`;
+        }
+
+        // Transform "1 + 1" into raw lambda source
+        function desugar(str) {
+            let s = str;
+
+            // 1. Simple Infix Handling for + and *
+            // Matches "Token + Token" and converts to "((PLUS Token) Token)"
+            // Note: This is a basic regex replacer, not a full precedence parser.
+            // It runs multiple times to handle chained expressions left-to-right.
+            let prev;
+            do {
+                prev = s;
+                s = s.replace(/([a-zA-Z0-9_]+)\s*\+\s*([a-zA-Z0-9_]+)/, '((PLUS $1) $2)');
+                s = s.replace(/([a-zA-Z0-9_]+)\s*\*\s*([a-zA-Z0-9_]+)/, '((MULT $1) $2)');
+                s = s.replace(/([a-zA-Z0-9_]+)\s*\^\s*([a-zA-Z0-9_]+)/, '((POW $1) $2)');
+            } while (s !== prev);
+
+            // 2. Expand Macros (PLUS, MULT) and Numbers
+            return s.replace(/[a-zA-Z0-9_]+/g, (match) => {
+                if (!isNaN(match)) {
+                    return generateChurchNum(parseInt(match)); // "2" -> "\f.\x..."
+                }
+                if (LIB[match]) {
+                    return LIB[match]; // "PLUS" -> "\m.\n..."
+                }
+                return match; // Variable name like "x" or "y"
+            });
+        }
+
+        // --- 1. COLORS ---
+        const PALETTE = [
+            "#e74c3c", "#3498db", "#2ecc71", "#9b59b6", "#f1c40f",
+            "#1abc9c", "#e67e22", "#34495e", "#d35400", "#7f8c8d"
+        ];
+        function getColor(depth) { return PALETTE[depth % PALETTE.length]; }
+
+        // --- 2. PARSER ---
+        class Abs { constructor(param, body) { this.type = 'Abs'; this.param = param; this.body = body; } }
+        class App { constructor(left, right) { this.type = 'App'; this.left = left; this.right = right; } }
+        class Var { constructor(name) { this.type = 'Var'; this.name = name; } }
+
+        function parseLambda(str) {
+            const tokens = str.replace(/λ/g, '\\').match(/(\(|\)|\\|\.|[a-zA-Z0-9]+)/g) || [];
+            let i = 0;
+            function parseTerm() {
+                if (i >= tokens.length) throw "Unexpected end";
+                const t = tokens[i];
+                if (t === '\\') {
+                    i++; const p = tokens[i++];
+                    if (tokens[i] === '.') i++;
+                    return new Abs(p, parseExpr());
+                } else if (t === '(') {
+                    i++; const term = parseExpr();
+                    if (tokens[i] === ')') i++;
+                    return term;
+                } else {
+                    i++; return new Var(t);
+                }
+            }
+            function parseExpr() {
+                let left = parseTerm();
+                while (i < tokens.length && tokens[i] !== ')' && tokens[i] !== '\\' && tokens[i] !== '.') {
+                    left = new App(left, parseTerm());
+                }
+                return left;
+            }
+            return parseExpr();
+        }
+
+        // --- 3. DE BRUIJN ---
+        class DBAbs { constructor(body) { this.type = 'Abs'; this.body = body; } }
+        class DBApp { constructor(left, right) { this.type = 'App'; this.left = left; this.right = right; } }
+        class DBVar { constructor(index) { this.type = 'Var'; this.index = index; } }
+
+        function toDeBruijn(term, ctx = []) {
+            if (term.type === 'Var') {
+                const idx = ctx.lastIndexOf(term.name);
+                return new DBVar(idx === -1 ? 999 : ctx.length - 1 - idx);
+            } else if (term.type === 'Abs') {
+                return new DBAbs(toDeBruijn(term.body, [...ctx, term.param]));
+            } else if (term.type === 'App') {
+                return new DBApp(toDeBruijn(term.left, ctx), toDeBruijn(term.right, ctx));
+            }
+        }
+
+        // --- 4. ENGINE ---
+        function shift(term, d, c = 0) {
+            if (term.type === 'Var') return new DBVar(term.index < c ? term.index : term.index + d);
+            if (term.type === 'Abs') return new DBAbs(shift(term.body, d, c + 1));
+            if (term.type === 'App') return new DBApp(shift(term.left, d, c), shift(term.right, d, c));
+        }
+        function subst(term, val, idx) {
+            if (term.type === 'Var') return term.index === idx ? val : term;
+            if (term.type === 'Abs') return new DBAbs(subst(term.body, shift(val, 1), idx + 1));
+            if (term.type === 'App') return new DBApp(subst(term.left, val, idx), subst(term.right, val, idx));
+        }
+        function reduceStep(term) {
+            if (term.type === 'App') {
+                if (term.left.type === 'Abs') {
+                    const body = term.left.body;
+                    const arg = term.right;
+                    const res = shift(subst(body, shift(arg, 1), 0), -1);
+                    return { term: res, reduced: true };
+                } else {
+                    const l = reduceStep(term.left);
+                    if (l.reduced) return { term: new DBApp(l.term, term.right), reduced: true };
+                    const r = reduceStep(term.right);
+                    if (r.reduced) return { term: new DBApp(term.left, r.term), reduced: true };
+                }
+            } else if (term.type === 'Abs') {
+                const b = reduceStep(term.body);
+                if (b.reduced) return { term: new DBAbs(b.term), reduced: true };
+            }
+            return { term, reduced: false };
+        }
+
+        // --- 5. RENDERER ---
+        const SCALE_X = 35;
+        const SCALE_Y = 40;
+        const MARGIN = 50;
+
+        function layoutTromp(term, depth = 0, xOffset = 0) {
+            if (term.type === 'Var') {
+                const binderDepth = depth - term.index - 1;
+                const color = binderDepth < 0 ? '#bbb' : getColor(binderDepth);
+                return { w: 1, shapes: [{ type: 'var', x: xOffset, depth, index: term.index, color }] };
+            }
+            if (term.type === 'Abs') {
+                const body = layoutTromp(term.body, depth + 1, xOffset);
+                const shapes = body.shapes;
+                shapes.push({ type: 'lambda', x: xOffset, w: body.w, depth: depth, color: getColor(depth) });
+                return { w: body.w, shapes };
+            }
+            if (term.type === 'App') {
+                const l = layoutTromp(term.left, depth, xOffset);
+                const r = layoutTromp(term.right, depth, xOffset + l.w);
+                return { w: l.w + r.w, shapes: [...l.shapes, ...r.shapes] };
+            }
+        }
+
+        function draw(term) {
+            const svg = document.getElementById('mainSvg');
+            svg.innerHTML = ''; // Clear but keep logic ready
+            const data = layoutTromp(term);
+
+            // Auto-size SVG
+            let maxDepth = 0;
+            data.shapes.forEach(s => maxDepth = Math.max(maxDepth, s.depth));
+            const width = (data.w * SCALE_X) + MARGIN * 2;
+            const height = ((maxDepth + 2) * SCALE_Y) + MARGIN * 2;
+            svg.style.width = `${width}px`;
+            svg.style.height = `${height}px`;
+
+            const px = x => MARGIN + x * SCALE_X;
+            const py = y => MARGIN + y * SCALE_Y;
+
+            data.shapes.forEach(s => {
+                if (s.type === 'lambda') {
+                    const line = document.createElementNS("http://www.w3.org/2000/svg", "line");
+                    line.setAttribute("x1", px(s.x));
+                    line.setAttribute("y1", py(s.depth));
+                    line.setAttribute("x2", px(s.x + s.w) - 10);
+                    line.setAttribute("y2", py(s.depth));
+                    line.setAttribute("class", "lambda-bar");
+                    line.style.stroke = s.color;
+                    svg.appendChild(line);
+
+                    // Anchor dot
+                    const dot = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+                    dot.setAttribute("cx", px(s.x));
+                    dot.setAttribute("cy", py(s.depth));
+                    dot.setAttribute("r", 5);
+                    dot.style.fill = s.color;
+                    svg.appendChild(dot);
+
+                } else if (s.type === 'var') {
+                    const xPos = px(s.x) + (SCALE_X / 2) - 5;
+                    const binderY = py(s.depth - s.index - 1);
+                    const safeTop = (s.depth - s.index - 1) < 0 ? 0 : binderY;
+
+                    const line = document.createElementNS("http://www.w3.org/2000/svg", "line");
+                    line.setAttribute("x1", xPos);
+                    line.setAttribute("y1", py(s.depth) + 15);
+                    line.setAttribute("x2", xPos);
+                    line.setAttribute("y2", safeTop);
+                    line.setAttribute("class", "var-line");
+                    line.style.stroke = s.color;
+
+                    if ((s.depth - s.index - 1) < 0) { // Free var
+                        line.style.strokeDasharray = "5,5";
+                    }
+                    svg.appendChild(line);
+
+                    // Var bulb
+                    const bulb = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+                    bulb.setAttribute("cx", xPos);
+                    bulb.setAttribute("cy", py(s.depth) + 15);
+                    bulb.setAttribute("r", 6);
+                    bulb.style.fill = s.color;
+                    svg.appendChild(bulb);
+                }
+            });
+        }
+
+        // --- 6. INTERACTION ---
+        let currentTerm = null;
+        let autoInterval = null;
+
+        function parseAndDraw() {
+            stopAuto();
+            let rawInput = document.getElementById('inputExpr').value;
+
+            // 1. Desugar (Translate "1+1" to lambda)
+            let processed = "";
+            try {
+                processed = desugar(rawInput);
+                document.getElementById('translation').innerText = "Compiled to: " + processed;
+            } catch (e) {
+                document.getElementById('statusText').innerText = "Translation Error";
+                return;
+            }
+
+            // 2. Parse & Draw
+            try {
+                const ast = parseLambda(processed);
+                currentTerm = toDeBruijn(ast);
+                document.getElementById('statusText').innerText = "Ready.";
+                document.getElementById('statusText').style.color = "#333";
+                draw(currentTerm);
+            } catch (e) {
+                document.getElementById('statusText').innerText = "Parse Error: " + e;
+                document.getElementById('statusText').style.color = "red";
+            }
+        }
+
+        function step() {
+            if (!currentTerm) return;
+            const res = reduceStep(currentTerm);
+            if (res.reduced) {
+                currentTerm = res.term;
+                draw(currentTerm);
+                document.getElementById('statusText').innerText = "Reducing...";
+            } else {
+                document.getElementById('statusText').innerText = "Result Reached (Normal Form)";
+                stopAuto();
+            }
+        }
+
+        function toggleAuto() {
+            if (autoInterval) {
+                stopAuto();
+            } else {
+                step();
+                autoInterval = setInterval(step, 600); // Faster speed
+                document.getElementById('btnAuto').innerText = "Pause";
+                document.getElementById('btnAuto').classList.add('highlight');
+            }
+        }
+
+        function stopAuto() {
+            clearInterval(autoInterval);
+            autoInterval = null;
+            const btn = document.getElementById('btnAuto');
+            btn.innerText = "Run Animation";
+            btn.classList.remove('highlight');
+        }
+
+        function loadPreset() {
+            const val = document.getElementById('presets').value;
+            if (val) {
+                document.getElementById('inputExpr').value = val;
+                parseAndDraw();
+            }
+        }
+
+        // Init
+        parseAndDraw();
+    </script>
+</body>
+
+</html>

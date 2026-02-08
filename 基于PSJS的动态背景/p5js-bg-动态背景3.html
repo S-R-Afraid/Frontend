@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <title>Spirals Sphere – Responsive Safe Scale</title>
+
+    <style>
+        html,
+        body {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            background: #000;
+        }
+
+        #spiral-container {
+            width: 100%;
+            height: 100%;
+            position: relative;
+            overflow: hidden;
+        }
+
+        canvas {
+            display: block;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="spiral-container"></div>
+
+    <script src="https://cdn.jsdelivr.net/npm/p5@1.9.3/lib/p5.min.js"></script>
+    <script>
+
+        /* =====================
+           Global config
+        ===================== */
+
+        const DESIGN_SIZE = 720;
+        const SAFE_SCALE = 0.85;   // ★ 安全缩放因子
+
+        let container;
+        let sceneScale = 1;
+
+        let t = 0;
+
+        let SphereRadius = 140;
+
+        let numberOfSpiralsFactor_0 = 0.025;
+        let numberOfSpiralsFactor;
+
+        let currentSphereSpiralPosition = 0;
+
+        /* =====================
+           Utility functions
+        ===================== */
+
+        function c01(x) { return constrain(x, 0, 1); }
+
+        function ease(p, g) {
+            if (p < 0.5) return 0.5 * pow(2 * p, g);
+            return 1 - 0.5 * pow(2 * (1 - p), g);
+        }
+
+        function mp01(x, a, b) {
+            return map(x, a, b, 0, 1, true);
+        }
+
+        function pow_(p, g) {
+            return 1 - pow(1 - p, g);
+        }
+
+        function tanh_(x) {
+            return Math.tanh(x);
+        }
+
+        function tanhInverse(p) {
+            return 0.5 * (Math.log(1 + p) - Math.log(1 - p));
+        }
+
+        /* =====================
+           Spiral math
+        ===================== */
+
+        function xFromK(k, xShift) {
+            return (k + xShift) * numberOfSpiralsFactor;
+        }
+
+        function KFromP(p, xShift) {
+            let x = tanhInverse(p);
+            return floor(x / numberOfSpiralsFactor - xShift);
+        }
+
+        function smallSpiralPattern(q, turns, rad) {
+            let pSpiral, theta, r;
+            if (q <= 0.5) {
+                pSpiral = 1 - mp01(q, 0, 0.5);
+                theta = sqrt(pSpiral) * turns * TWO_PI - turns * TWO_PI;
+                r = sqrt(pSpiral) * rad;
+            } else {
+                pSpiral = mp01(q, 0.5, 1);
+                theta = sqrt(pSpiral) * turns * TWO_PI - turns * TWO_PI + PI;
+                r = sqrt(pSpiral) * rad;
+            }
+            return createVector(r * cos(theta), r * sin(theta));
+        }
+
+        function spiralPatternFromP(p, xShift, numberOfTurnsFactor) {
+            let k1 = KFromP(p, xShift);
+            let k2 = k1 + 1;
+
+            let p1 = tanh_(xFromK(k1, xShift));
+            let p2 = tanh_(xFromK(k2, xShift));
+
+            let turnsSwitchIntensity =
+                0.5 * ease(map(t, 0.42, 0.94, 1, 0.6, true), 1.3);
+
+            let everyOtherOffset = 0.5 * (k1 % 2);
+            let turnsSwitchSpeed = 2.6 * pow(mp01(t, 0.2, 1), 2.6);
+
+            let alternating =
+                turnsSwitchIntensity *
+                cos(TWO_PI * (turnsSwitchSpeed + everyOtherOffset));
+
+            let numberOfTurnsFactor2 = 1.15 + alternating;
+
+            let numberOfTurnsChangeWithP =
+                c01(sin(PI * currentSphereSpiralPosition)) * pow_(t, 2);
+
+            let delay = (1 - sin(PI * currentSphereSpiralPosition)) * 0.8;
+
+            let propagation =
+                ease(
+                    pow_(
+                        mp01(numberOfTurnsChangeWithP - delay, 0, 1 - delay),
+                        2.7
+                    ),
+                    1.3
+                );
+
+            let numberOfTurns =
+                numberOfTurnsFactor *
+                numberOfTurnsFactor2 *
+                numberOfTurnsChangeWithP *
+                propagation;
+
+            let rad = (p2 - p1) / 2;
+            let localQ = 1 - (p - p1) / (p2 - p1);
+
+            let vLocal = smallSpiralPattern(localQ, numberOfTurns, rad);
+            let middleP = (p1 + p2) / 2;
+
+            return createVector(middleP + vLocal.x, vLocal.y);
+        }
+
+        /* =====================
+           Sphere curve
+        ===================== */
+
+        function rotY(v, theta) {
+            return createVector(
+                v.x * cos(theta) - v.z * sin(theta),
+                v.y,
+                v.x * sin(theta) + v.z * cos(theta)
+            );
+        }
+
+        function curvePath(q, s) {
+            let v = createVector(0, -1, 0);
+            v.rotate(TWO_PI * q);
+            v = rotY(
+                v,
+                s * TWO_PI * (2 * q < 1 ? q * 2 : 2 - 2 * q) - s * PI
+            );
+            v.mult(SphereRadius);
+            return v;
+        }
+
+        function curveCoordinates(q, s) {
+            let pos = curvePath(q, s);
+            let pos2 = curvePath(q + 0.005, s);
+
+            let v2 = p5.Vector.sub(pos2, pos).normalize();
+            let v1 = p5.Vector.sub(pos.copy().mult(1.1), pos).normalize();
+            let v3 = v1.copy().cross(v2);
+
+            return { pos, u1: v1, u2: v2, u3: v3 };
+        }
+
+        function spiralsCurve(p, s, turns, xShift, heightFactor) {
+            let q, v2d;
+
+            if (p <= 0.5) {
+                let q0 = mp01(p, 0, 0.5);
+                currentSphereSpiralPosition = q0;
+                v2d = spiralPatternFromP(2 * (q0 - 0.5) * 0.999, xShift, turns);
+                q = map(v2d.x, -1, 1, 0, 0.5);
+            } else {
+                let q0 = mp01(p, 0.5, 1);
+                currentSphereSpiralPosition = q0;
+                v2d = spiralPatternFromP(2 * (q0 - 0.5) * 0.999, xShift, turns);
+                q = map(v2d.x, -1, 1, 0.5, 1);
+            }
+
+            let coords = curveCoordinates(q, s);
+
+            let flatEnding = ease(map(t, 0.9, 0.975, 1, 0, true), 1.7);
+            let h = 13.5 * heightFactor * v2d.y * SphereRadius * flatEnding;
+
+            return coords.pos.copy().add(coords.u3.copy().mult(h));
+        }
+
+        function projectOnSphere(v) {
+            return v.mult(SphereRadius / v.mag());
+        }
+
+        function curveTransformation(p, mainAct, turnAct) {
+            numberOfSpiralsFactor =
+                pow(numberOfSpiralsFactor_0, pow(abs(mainAct), 0.5));
+
+            let s = 5 * pow(mainAct, 2);
+            let turns = 2 * pow(mp01(turnAct, 0.3, 1), 2);
+            let xShift =
+                13 * pow(t, 2.7) + 0.15 + 40 * pow(mp01(t, 0.4, 1), 5);
+
+            let h = pow(mainAct, 2);
+
+            return projectOnSphere(
+                spiralsCurve(p, s, turns, xShift, h)
+            );
+        }
+
+        /* =====================
+           Responsive canvas
+        ===================== */
+
+        function updateSceneScale() {
+            const w = container.clientWidth;
+            const h = container.clientHeight;
+            resizeCanvas(w, h);
+            sceneScale = min(w, h) / DESIGN_SIZE;
+        }
+
+        /* =====================
+           p5 lifecycle
+        ===================== */
+
+        function setup() {
+            container = document.getElementById('spiral-container');
+
+            createCanvas(
+                container.clientWidth,
+                container.clientHeight,
+                WEBGL
+            );
+
+            pixelDensity(min(window.devicePixelRatio, 2));
+            stroke(255);
+            noFill();
+
+            updateSceneScale();
+
+            const ro = new ResizeObserver(updateSceneScale);
+            ro.observe(container);
+        }
+
+        function draw() {
+            background(0);
+
+            t = (millis() * 0.00004) % 1;
+
+            push();
+
+            // ★ 父容器缩放 + 安全缩放
+            scale(sceneScale * SAFE_SCALE);
+
+            rotateZ(1.8 * PI * pow(mp01(t, 0.34, 1), 4.4));
+            scale(2.6);
+
+            let activate = ease(pow(mp01(t, 0, 0.49), 1.2), 1.8);
+            let deactivate = ease(pow(mp01(t, 0.3, 1), 3), 2.5);
+            let mainAct = activate - deactivate;
+            let turnAct = mp01(t, 0, 0.39);
+
+            beginShape();
+            const N = 45000;
+            for (let i = 0; i < N; i++) {
+                let q = i / N;
+                let v = curveTransformation(q, mainAct, turnAct);
+                stroke(map(v.z, SphereRadius, -SphereRadius, 255, 180));
+                vertex(v.x, v.y, v.z);
+            }
+            endShape(CLOSE);
+
+            pop();
+        }
+
+    </script>
+</body>
+
+</html>

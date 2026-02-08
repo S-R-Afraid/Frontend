@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>特殊井字棋</title>
+    <style>
+        :root {
+            --bg-grad-1: #1a1a2e;
+            --bg-grad-2: #16213e;
+            --cell-bg: #0f3460;
+            --cell-hover: #1a4b8c;
+            --x-color: #ff2e63;
+            --o-color: #08d9d6;
+            --text-color: #eaeaea;
+            --win-color: #fff;
+        }
+
+        body {
+            font-family: 'Segoe UI', sans-serif;
+            background: radial-gradient(circle at center, var(--bg-grad-2), var(--bg-grad-1));
+            color: var(--text-color);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            margin: 0;
+            overflow: hidden;
+            user-select: none;
+            transition: background-color 0.5s; 
+        }
+
+        body.screen-shake {
+            animation: heavyShake 0.5s cubic-bezier(.36,.07,.19,.97) both;
+        }
+
+        @keyframes heavyShake {
+            0% { transform: translate(0, 0) rotate(0deg); }
+            10% { transform: translate(-10px, -10px) rotate(-2deg); }
+            20% { transform: translate(10px, 10px) rotate(2deg); }
+            30% { transform: translate(-10px, 10px) rotate(0deg); }
+            40% { transform: translate(10px, -10px) rotate(1deg); }
+            50% { transform: translate(-5px, 5px) rotate(-1deg); }
+            60% { transform: translate(5px, -5px) rotate(0deg); }
+            100% { transform: translate(0, 0) rotate(0deg); }
+        }
+
+        /* --- 爆炸容器 --- */
+        #cartoon-explosion {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            width: 0;
+            height: 0;
+            z-index: 5; 
+            pointer-events: none;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        /* 放射状尖刺 */
+        .spikes {
+            position: absolute;
+            width: 60px;
+            height: 60px;
+            background: var(--win-color);
+            clip-path: polygon(
+                20% 0%, 30% 40%, 0% 20%, 30% 50%, 
+                0% 80%, 40% 60%, 20% 100%, 50% 70%, 
+                80% 100%, 60% 60%, 100% 80%, 70% 50%, 
+                100% 20%, 70% 40%, 80% 0%, 50% 30%
+            );
+            opacity: 0;
+            transform: scale(0) rotate(0deg);
+        }
+
+        /* 云朵主体 */
+        .cloud-blob {
+            position: absolute;
+            width: 40px;
+            height: 40px;
+            background: var(--win-color);
+            border-radius: 50%;
+            opacity: 0;
+            box-shadow: 
+                25px -15px 0 8px var(--win-color),
+                -25px -20px 0 4px var(--win-color),
+                -35px 15px 0 10px var(--win-color),
+                25px 20px 0 6px var(--win-color),
+                0px -35px 0 8px var(--win-color),
+                0px 35px 0 8px var(--win-color);
+            transform: scale(0);
+        }
+
+        #cartoon-explosion.active .spikes {
+            animation: spikeExplode 1.0s ease-out forwards;
+        }
+
+        #cartoon-explosion.active .cloud-blob {
+            animation: cloudExplode 4.0s ease-out forwards;
+        }
+
+        @keyframes spikeExplode {
+            0% { transform: scale(0) rotate(0deg); opacity: 1; }
+            40% { opacity: 1; }
+            100% { 
+                transform: scale(60) rotate(45deg); 
+                opacity: 0; 
+            }
+        }
+
+        @keyframes cloudExplode {
+            0% { transform: scale(0); opacity: 1; }
+            30% { opacity: 1; }
+            100% { 
+                transform: scale(80); 
+                opacity: 0; 
+            }
+        }
+
+        h1 { margin-bottom: 10px; text-shadow: 0 0 10px rgba(255,255,255,0.1); z-index: 10; }
+        .status { margin-bottom: 25px; font-size: 1.5rem; height: 30px; font-weight: bold; z-index: 10; }
+        .highlight.X { color: var(--x-color); text-shadow: 0 0 10px var(--x-color); }
+        .highlight.O { color: var(--o-color); text-shadow: 0 0 10px var(--o-color); }
+        
+        .board-container { position: relative; z-index: 10; }
+        
+        .board {
+            display: grid; grid-template-columns: repeat(3, 100px); grid-template-rows: repeat(3, 100px); gap: 12px;
+            background: rgba(255,255,255,0.05); 
+            padding: 15px; border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3); backdrop-filter: blur(5px);
+        }
+        .board.shake { animation: smallShake 0.4s cubic-bezier(.36,.07,.19,.97) both; }
+        .cell {
+            background-color: var(--cell-bg); border-radius: 12px; display: flex; justify-content: center; align-items: center;
+            font-size: 4.5rem; cursor: pointer; position: relative; box-shadow: inset 0 0 10px rgba(0,0,0,0.5);
+            transition: background 0.2s, transform 0.1s;
+        }
+        .cell:not(.taken):hover { background-color: var(--cell-hover); transform: scale(1.02); }
+        .cell.x { color: var(--x-color); }
+        .cell.o { color: var(--o-color); }
+        .pop-in { animation: popIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards; }
+        .cell.fading {
+            opacity: 0.5; border: 2px dashed rgba(255,255,255,0.3); animation: pulse 1.5s infinite ease-in-out;
+            cursor: pointer !important; background-color: rgba(0,0,0,0.2);
+        }
+        .cell.fading::after { content: 'OVERWRITE'; position: absolute; font-size: 10px; color: #fff; bottom: 8px; letter-spacing: 1px; opacity: 0.8; }
+        .cell.winner { background-color: #fff !important; animation: winFlash 0.5s infinite alternate; }
+        .restart-btn {
+            margin-top: 35px; padding: 12px 30px; font-size: 1.1rem;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; border-radius: 50px;
+            cursor: pointer; box-shadow: 0 4px 15px rgba(0,0,0,0.3); transition: transform 0.2s; z-index: 20;
+        }
+        .restart-btn:hover { transform: translateY(-2px); }
+        #confetti-canvas { position: fixed; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 20; }
+        
+        @keyframes popIn { 0% { transform: scale(0) rotate(-45deg); opacity: 0; } 100% { transform: scale(1) rotate(0deg); opacity: 1; } }
+        @keyframes pulse { 0% { transform: scale(0.95); } 50% { transform: scale(0.98); box-shadow: 0 0 10px rgba(255,255,255,0.1); } 100% { transform: scale(0.95); } }
+        @keyframes winFlash { from { box-shadow: 0 0 10px #fff; transform: scale(1); } to { box-shadow: 0 0 40px #fff; transform: scale(1.05); } }
+        @keyframes smallShake { 10%, 90% { transform: translate3d(-1px, 0, 0); } 20%, 80% { transform: translate3d(2px, 0, 0); } 30%, 50%, 70% { transform: translate3d(-4px, 0, 0); } 40%, 60% { transform: translate3d(4px, 0, 0); } }
+    </style>
+</head>
+<body>
+
+    <div id="cartoon-explosion">
+        <div class="spikes"></div>
+        <div class="cloud-blob"></div>
+    </div>
+
+    <canvas id="confetti-canvas"></canvas>
+
+    <h1>CYBER TIC-TAC-TOE</h1>
+    <div class="status" id="status">TURN: <span class="highlight X">X</span></div>
+
+    <div class="board-container">
+        <div class="board" id="board">
+            <div class="cell" data-index="0"></div>
+            <div class="cell" data-index="1"></div>
+            <div class="cell" data-index="2"></div>
+            <div class="cell" data-index="3"></div>
+            <div class="cell" data-index="4"></div>
+            <div class="cell" data-index="5"></div>
+            <div class="cell" data-index="6"></div>
+            <div class="cell" data-index="7"></div>
+            <div class="cell" data-index="8"></div>
+        </div>
+    </div>
+
+    <button class="restart-btn" onclick="restartGame()">RESET SYSTEM</button>
+
+    <!-- 引用外部脚本 -->
+    <script src="井字棋.js"></script>
+</body>
+</html>

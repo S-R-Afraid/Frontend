@@ -1,0 +1,485 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>井字棋</title>
+    <style>
+        :root {
+            --bg-grad-1: #1a1a2e;
+            --bg-grad-2: #16213e;
+            --cell-bg: #0f3460;
+            --cell-hover: #1a4b8c;
+            --x-color: #ff2e63;
+            --o-color: #08d9d6;
+            --text-color: #eaeaea;
+            --win-color: #fff;
+        }
+
+        body {
+            font-family: 'Segoe UI', sans-serif;
+            background: radial-gradient(circle at center, var(--bg-grad-2), var(--bg-grad-1));
+            color: var(--text-color);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            margin: 0;
+            overflow: hidden;
+            user-select: none;
+            transition: background-color 0.5s; 
+        }
+
+        body.screen-shake {
+            animation: heavyShake 0.5s cubic-bezier(.36,.07,.19,.97) both;
+        }
+
+        @keyframes heavyShake {
+            0% { transform: translate(0, 0) rotate(0deg); }
+            10% { transform: translate(-10px, -10px) rotate(-2deg); }
+            20% { transform: translate(10px, 10px) rotate(2deg); }
+            30% { transform: translate(-10px, 10px) rotate(0deg); }
+            40% { transform: translate(10px, -10px) rotate(1deg); }
+            50% { transform: translate(-5px, 5px) rotate(-1deg); }
+            60% { transform: translate(5px, -5px) rotate(0deg); }
+            100% { transform: translate(0, 0) rotate(0deg); }
+        }
+
+        /* --- 爆炸容器 --- */
+        #cartoon-explosion {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            width: 0;
+            height: 0;
+            /* 修改点 1: z-index 设为 5，小于棋盘的 10 */
+            z-index: 5; 
+            pointer-events: none;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        /* 放射状尖刺 */
+        .spikes {
+            position: absolute;
+            /* 修改点 2: 初始尺寸缩小 (原100px) */
+            width: 60px;
+            height: 60px;
+            background: var(--win-color);
+            clip-path: polygon(
+                20% 0%, 30% 40%, 0% 20%, 30% 50%, 
+                0% 80%, 40% 60%, 20% 100%, 50% 70%, 
+                80% 100%, 60% 60%, 100% 80%, 70% 50%, 
+                100% 20%, 70% 40%, 80% 0%, 50% 30%
+            );
+            opacity: 0;
+            transform: scale(0) rotate(0deg);
+        }
+
+        /* 云朵主体 */
+        .cloud-blob {
+            position: absolute;
+            /* 修改点 2: 初始尺寸缩小 (原60px) */
+            width: 40px;
+            height: 40px;
+            background: var(--win-color);
+            border-radius: 50%;
+            opacity: 0;
+            /* 修改点 2: 阴影距离相应缩小，使其更紧凑 */
+            box-shadow: 
+                25px -15px 0 8px var(--win-color),
+                -25px -20px 0 4px var(--win-color),
+                -35px 15px 0 10px var(--win-color),
+                25px 20px 0 6px var(--win-color),
+                0px -35px 0 8px var(--win-color),
+                0px 35px 0 8px var(--win-color);
+            transform: scale(0);
+        }
+
+        /* 修改点 3: 动画时长增加，变慢 */
+        #cartoon-explosion.active .spikes {
+            animation: spikeExplode 1.0s ease-out forwards; 
+        }
+
+        #cartoon-explosion.active .cloud-blob {
+            animation: cloudExplode 4.0s ease-out forwards; 
+        }
+
+        @keyframes spikeExplode {
+            0% { transform: scale(0) rotate(0deg); opacity: 1; }
+            40% { opacity: 1; }
+            100% { 
+                /* 因为初始尺寸变小了，scale倍数需要调大一点才能填满屏幕 */
+                transform: scale(60) rotate(45deg); 
+                opacity: 0; 
+            }
+        }
+
+        @keyframes cloudExplode {
+            0% { transform: scale(0); opacity: 1; }
+            30% { opacity: 1; }
+            100% { 
+                transform: scale(80); 
+                opacity: 0; 
+            }
+        }
+
+        h1 { margin-bottom: 10px; text-shadow: 0 0 10px rgba(255,255,255,0.1); z-index: 10; }
+        .status { margin-bottom: 25px; font-size: 1.5rem; height: 30px; font-weight: bold; z-index: 10; }
+        .highlight.X { color: var(--x-color); text-shadow: 0 0 10px var(--x-color); }
+        .highlight.O { color: var(--o-color); text-shadow: 0 0 10px var(--o-color); }
+        
+        /* 棋盘容器 z-index 保持 10，确保在爆炸上方 */
+        .board-container { position: relative; z-index: 10; }
+        
+        .board {
+            display: grid; grid-template-columns: repeat(3, 100px); grid-template-rows: repeat(3, 100px); gap: 12px;
+            /* 保持半透明，这样能看到背后的爆炸 */
+            background: rgba(255,255,255,0.05); 
+            padding: 15px; border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3); backdrop-filter: blur(5px);
+        }
+        .board.shake { animation: smallShake 0.4s cubic-bezier(.36,.07,.19,.97) both; }
+        .cell {
+            background-color: var(--cell-bg); border-radius: 12px; display: flex; justify-content: center; align-items: center;
+            font-size: 4.5rem; cursor: pointer; position: relative; box-shadow: inset 0 0 10px rgba(0,0,0,0.5);
+            transition: background 0.2s, transform 0.1s;
+        }
+        .cell:not(.taken):hover { background-color: var(--cell-hover); transform: scale(1.02); }
+        .cell.x { color: var(--x-color); }
+        .cell.o { color: var(--o-color); }
+        .pop-in { animation: popIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards; }
+        .cell.fading {
+            opacity: 0.5; border: 2px dashed rgba(255,255,255,0.3); animation: pulse 1.5s infinite ease-in-out;
+            cursor: pointer !important; background-color: rgba(0,0,0,0.2);
+        }
+        .cell.fading::after { content: 'OVERWRITE'; position: absolute; font-size: 10px; color: #fff; bottom: 8px; letter-spacing: 1px; opacity: 0.8; }
+        .cell.winner { background-color: #fff !important; animation: winFlash 0.5s infinite alternate; }
+        .restart-btn {
+            margin-top: 35px; padding: 12px 30px; font-size: 1.1rem;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; border-radius: 50px;
+            cursor: pointer; box-shadow: 0 4px 15px rgba(0,0,0,0.3); transition: transform 0.2s; z-index: 20;
+        }
+        .restart-btn:hover { transform: translateY(-2px); }
+        #confetti-canvas { position: fixed; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 20; }
+        
+        @keyframes popIn { 0% { transform: scale(0) rotate(-45deg); opacity: 0; } 100% { transform: scale(1) rotate(0deg); opacity: 1; } }
+        @keyframes pulse { 0% { transform: scale(0.95); } 50% { transform: scale(0.98); box-shadow: 0 0 10px rgba(255,255,255,0.1); } 100% { transform: scale(0.95); } }
+        @keyframes winFlash { from { box-shadow: 0 0 10px #fff; transform: scale(1); } to { box-shadow: 0 0 40px #fff; transform: scale(1.05); } }
+        @keyframes smallShake { 10%, 90% { transform: translate3d(-1px, 0, 0); } 20%, 80% { transform: translate3d(2px, 0, 0); } 30%, 50%, 70% { transform: translate3d(-4px, 0, 0); } 40%, 60% { transform: translate3d(4px, 0, 0); } }
+    </style>
+</head>
+<body>
+
+    <div id="cartoon-explosion">
+        <div class="spikes"></div>
+        <div class="cloud-blob"></div>
+    </div>
+
+    <canvas id="confetti-canvas"></canvas>
+
+    <h1>CYBER TIC-TAC-TOE</h1>
+    <div class="status" id="status">TURN: <span class="highlight X">X</span></div>
+
+    <div class="board-container">
+        <div class="board" id="board">
+            <div class="cell" data-index="0"></div>
+            <div class="cell" data-index="1"></div>
+            <div class="cell" data-index="2"></div>
+            <div class="cell" data-index="3"></div>
+            <div class="cell" data-index="4"></div>
+            <div class="cell" data-index="5"></div>
+            <div class="cell" data-index="6"></div>
+            <div class="cell" data-index="7"></div>
+            <div class="cell" data-index="8"></div>
+        </div>
+    </div>
+
+    <button class="restart-btn" onclick="restartGame()">RESET SYSTEM</button>
+
+    <script>
+        const cells = document.querySelectorAll('.cell');
+        const statusText = document.getElementById('status');
+        const boardElement = document.getElementById('board');
+        const explosionContainer = document.getElementById('cartoon-explosion');
+        const root = document.documentElement; 
+        
+        let currentPlayer = 'X';
+        let isGameActive = true;
+        let boardState = Array(9).fill(null);
+        let moves = { 'X': [], 'O': [] };
+        
+        const AudioContext = window.AudioContext || window.webkitAudioContext;
+        const audioCtx = new AudioContext();
+
+        const sounds = {
+            place: (type) => {
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.type = type === 'X' ? 'square' : 'triangle';
+                osc.frequency.setValueAtTime(type === 'X' ? 440 : 523, audioCtx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(880, audioCtx.currentTime + 0.1);
+                gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.1);
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+                osc.start();
+                osc.stop(audioCtx.currentTime + 0.1);
+            },
+            remove: () => {
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(200, audioCtx.currentTime);
+                osc.frequency.linearRampToValueAtTime(50, audioCtx.currentTime + 0.15);
+                gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
+                gain.gain.linearRampToValueAtTime(0, audioCtx.currentTime + 0.15);
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+                osc.start();
+                osc.stop(audioCtx.currentTime + 0.15);
+            },
+            overwrite: () => {
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.type = 'square';
+                osc.frequency.setValueAtTime(150, audioCtx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(600, audioCtx.currentTime + 0.1);
+                gain.gain.setValueAtTime(0.15, audioCtx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.15);
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+                osc.start();
+                osc.stop(audioCtx.currentTime + 0.15);
+            },
+            win: () => {
+                [261.63, 329.63, 392.00, 523.25, 783.99].forEach((freq, i) => {
+                    setTimeout(() => {
+                        const osc = audioCtx.createOscillator();
+                        const gain = audioCtx.createGain();
+                        osc.type = 'triangle';
+                        osc.frequency.value = freq;
+                        gain.gain.setValueAtTime(0.2, audioCtx.currentTime);
+                        gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 1.0);
+                        osc.connect(gain);
+                        gain.connect(audioCtx.destination);
+                        osc.start();
+                        osc.stop(audioCtx.currentTime + 1.0);
+                    }, i * 60);
+                });
+                const oscBass = audioCtx.createOscillator();
+                const gainBass = audioCtx.createGain();
+                oscBass.type = 'sine';
+                oscBass.frequency.setValueAtTime(100, audioCtx.currentTime);
+                oscBass.frequency.exponentialRampToValueAtTime(30, audioCtx.currentTime + 0.5);
+                gainBass.gain.setValueAtTime(0.5, audioCtx.currentTime);
+                gainBass.gain.linearRampToValueAtTime(0, audioCtx.currentTime + 0.5);
+                oscBass.connect(gainBass);
+                gainBass.connect(audioCtx.destination);
+                oscBass.start();
+                oscBass.stop(audioCtx.currentTime + 0.5);
+            },
+            error: () => {
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(100, audioCtx.currentTime);
+                osc.frequency.linearRampToValueAtTime(80, audioCtx.currentTime + 0.2);
+                gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
+                gain.gain.linearRampToValueAtTime(0, audioCtx.currentTime + 0.2);
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+                osc.start();
+                osc.stop(audioCtx.currentTime + 0.2);
+            }
+        };
+
+        const winningConditions = [
+            [0, 1, 2], [3, 4, 5], [6, 7, 8],
+            [0, 3, 6], [1, 4, 7], [2, 5, 8],
+            [0, 4, 8], [2, 4, 6]
+        ];
+
+        function handleCellClick(e) {
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+            const cell = e.target;
+            const index = parseInt(cell.getAttribute('data-index'));
+
+            if (!isGameActive) return;
+
+            const playerMoves = moves[currentPlayer];
+            const isFull = playerMoves.length === 3;
+            const oldestIndex = isFull ? playerMoves[0] : -1;
+            const isTargetOwnOldest = (index === oldestIndex);
+            
+            if (boardState[index] !== null && !isTargetOwnOldest) {
+                sounds.error();
+                boardElement.classList.remove('shake');
+                void boardElement.offsetWidth; 
+                boardElement.classList.add('shake');
+                return;
+            }
+
+            let isOverwriting = false;
+
+            if (isFull) {
+                const indexToRemove = moves[currentPlayer].shift();
+                boardState[indexToRemove] = null;
+                const cellToRemove = document.querySelector(`.cell[data-index='${indexToRemove}']`);
+                cellToRemove.textContent = '';
+                cellToRemove.className = 'cell'; 
+                if (index === indexToRemove) isOverwriting = true;
+                else sounds.remove(); 
+            }
+
+            boardState[index] = currentPlayer;
+            moves[currentPlayer].push(index);
+            
+            cell.textContent = currentPlayer;
+            cell.className = `cell taken ${currentPlayer.toLowerCase()} pop-in`;
+            
+            if (isOverwriting) sounds.overwrite();
+            else sounds.place(currentPlayer);
+
+            if (checkWin()) {
+                endGame();
+                return;
+            }
+
+            currentPlayer = currentPlayer === 'X' ? 'O' : 'X';
+            statusText.innerHTML = `TURN: <span class="highlight ${currentPlayer}">${currentPlayer}</span>`;
+            updateFadingEffects();
+        }
+
+        function checkWin() {
+            for (let condition of winningConditions) {
+                const [a, b, c] = condition;
+                if (boardState[a] && boardState[a] === boardState[b] && boardState[a] === boardState[c]) {
+                    [a, b, c].forEach(idx => {
+                        const cell = document.querySelector(`.cell[data-index='${idx}']`);
+                        cell.classList.add('winner');
+                        cell.style.color = currentPlayer === 'X' ? 'var(--x-color)' : 'var(--o-color)';
+                    });
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        function endGame() {
+            statusText.innerHTML = `WINNER: <span class="highlight ${currentPlayer}">${currentPlayer}</span>`;
+            isGameActive = false;
+            cells.forEach(c => c.classList.remove('fading'));
+            
+            sounds.win();
+            
+            const winColor = currentPlayer === 'X' ? '#ff2e63' : '#08d9d6';
+            root.style.setProperty('--win-color', winColor);
+            
+            explosionContainer.classList.remove('active');
+            void explosionContainer.offsetWidth; 
+            explosionContainer.classList.add('active');
+
+            document.body.classList.add('screen-shake');
+            setTimeout(() => {
+                document.body.classList.remove('screen-shake');
+            }, 500);
+
+            fireConfetti();
+        }
+
+        function updateFadingEffects() {
+            cells.forEach(cell => cell.classList.remove('fading'));
+            if (moves[currentPlayer].length === 3) {
+                const indexToFade = moves[currentPlayer][0];
+                const cell = document.querySelector(`.cell[data-index='${indexToFade}']`);
+                if (cell) cell.classList.add('fading');
+            }
+        }
+
+        function restartGame() {
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+            
+            currentPlayer = 'X';
+            isGameActive = true;
+            boardState = Array(9).fill(null);
+            moves['X'] = [];
+            moves['O'] = [];
+            statusText.innerHTML = `TURN: <span class="highlight X">X</span>`;
+            
+            cells.forEach(cell => {
+                cell.textContent = '';
+                cell.className = 'cell';
+                cell.style.backgroundColor = '';
+                cell.style.color = '';
+            });
+            sounds.place('X'); 
+            
+            const canvas = document.getElementById('confetti-canvas');
+            const ctx = canvas.getContext('2d');
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            document.body.classList.remove('screen-shake');
+            explosionContainer.classList.remove('active');
+        }
+
+        function fireConfetti() {
+            const canvas = document.getElementById('confetti-canvas');
+            const ctx = canvas.getContext('2d');
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+
+            const particles = [];
+            const winColorHex = currentPlayer === 'X' ? '#ff2e63' : '#08d9d6';
+            const colors = [winColorHex, '#ffffff', '#ffce00'];
+
+            for (let i = 0; i < 400; i++) {
+                particles.push({
+                    x: window.innerWidth / 2,
+                    y: window.innerHeight / 2,
+                    w: Math.random() * 10 + 5,
+                    h: Math.random() * 10 + 5,
+                    vx: (Math.random() - 0.5) * 40,
+                    vy: (Math.random() - 0.5) * 40,
+                    color: colors[Math.floor(Math.random() * colors.length)],
+                    life: 150,
+                    decay: Math.random() * 0.02 + 0.01
+                });
+            }
+
+            function draw() {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                let active = false;
+                particles.forEach(p => {
+                    if (p.life > 0) {
+                        active = true;
+                        p.x += p.vx;
+                        p.y += p.vy;
+                        p.vx *= 0.94;
+                        p.vy *= 0.94;
+                        p.vy += 0.5;
+                        p.life -= 1;
+                        
+                        ctx.fillStyle = p.color;
+                        ctx.globalAlpha = p.life / 150;
+                        ctx.fillRect(p.x, p.y, p.w, p.h);
+                    }
+                });
+                if (active) requestAnimationFrame(draw);
+                else ctx.clearRect(0,0,canvas.width, canvas.height);
+            }
+            draw();
+        }
+
+        cells.forEach(cell => cell.addEventListener('click', handleCellClick));
+        window.addEventListener('resize', () => {
+            const canvas = document.getElementById('confetti-canvas');
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        });
+
+    </script>
+</body>
+</html>
