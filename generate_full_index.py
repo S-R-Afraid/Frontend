@@ -59,7 +59,7 @@ def generate_tree_html(current_dir):
         if sub_html:
             html += f'''
             <li class="folder-item">
-                <details open> <!-- 默认展开，如果想默认折叠，去掉 open 属性 -->
+                <details> <!-- 默认展开，如果想默认折叠，去掉 open 属性 -->
                     <summary class="folder-name">📂 {d}</summary>
                     {sub_html}
                 </details>
