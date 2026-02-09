@@ -11,7 +11,7 @@ OUTPUT_FILENAME = "index.html"  # 建议直接命名为 index.html 作为主页
 
 # 忽略配置
 EXCLUDED_DIRS = {'.git', '.github', '.vscode', 'node_modules', '__pycache__', 'dist', 'venv'}
-EXCLUDED_FILES = {'generate_full_index.py', OUTPUT_FILENAME, '.DS_Store', 'CNAME', '.gitignore', 'package-lock.json', 'README.md'}
+EXCLUDED_FILES = {'generate_full_index.py',  '.DS_Store', 'CNAME', '.gitignore', 'package-lock.json', 'README.md'}
 # ===========================================
 
 def get_web_url(relative_path):
