@@ -7,7 +7,7 @@ import datetime
 BASE_URL = "https://s-r-afraid.github.io/Frontend/"
 
 # 输出文件名
-OUTPUT_FILENAME = "file-index.html"  # 建议直接命名为 index.html 作为主页
+OUTPUT_FILENAME = "index.html"  # 建议直接命名为 index.html 作为主页
 
 # 忽略配置
 EXCLUDED_DIRS = {'.git', '.github', '.vscode', 'node_modules', '__pycache__', 'dist', 'venv'}

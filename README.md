@@ -1,7 +1,7 @@
 # Frontend
 前端合集。
 
-[👉点我进入文件索引](https://s-r-afraid.github.io/Frontend/file-index.html)
+[👉点我进入文件索引](https://s-r-afraid.github.io/Frontend/index.html)
 
 大部分内容可在[我的博客](https://www.wenzhimo.xyz/category/article/programing/html-css3/))里查看效果。
 
