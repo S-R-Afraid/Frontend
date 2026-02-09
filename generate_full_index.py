@@ -7,18 +7,25 @@ import datetime
 BASE_URL = "https://s-r-afraid.github.io/Frontend/"
 
 # 输出文件名
-OUTPUT_FILENAME = "index.html"  # 建议直接命名为 index.html 作为主页
+OUTPUT_FILENAME = "index.html"
 
 # 忽略配置
 EXCLUDED_DIRS = {'.git', '.github', '.vscode', 'node_modules', '__pycache__', 'dist', 'venv'}
-EXCLUDED_FILES = {'generate_full_index.py',  '.DS_Store', 'CNAME', '.gitignore', 'package-lock.json', 'README.md'}
+EXCLUDED_FILES = {'generate_dark_tree.py',  '.DS_Store', 'CNAME', '.gitignore', 'package-lock.json', '_config.yml', 'README.md'}
 # ===========================================
 
-def get_web_url(relative_path):
+def get_web_url(relative_path, is_markdown=False):
     """生成带前缀的完整 URL"""
     path = relative_path.replace(os.sep, '/')
     if path.startswith('./'):
         path = path[2:]
+    
+    # === 关键修改 ===
+    # 如果是 Markdown 文件，将链接后缀改为 .html
+    # 这样 GitHub Pages 就会显示渲染后的页面，而不是源码
+    if is_markdown and path.endswith('.md'):
+        path = path[:-3] + '.html'
+        
     safe_path = urllib.parse.quote(path)
     return BASE_URL + safe_path
 
@@ -56,7 +63,6 @@ def generate_tree_html(current_dir):
         sub_html = generate_tree_html(sub_path)
         
         if sub_html:
-            # 默认 open 展开，如果想折叠请删除 open
             html += f'''
             <li class="folder-item">
                 <details> 
@@ -71,18 +77,27 @@ def generate_tree_html(current_dir):
     # 2. 文件
     for f in files:
         rel_path = os.path.join(current_dir, f)
-        url = get_web_url(rel_path)
-        html += f'<li class="file-item"><span class="icon">📄</span><a href="{url}" target="_blank">{f}</a></li>\n'
+        
+        # 判断是否为 markdown 文件
+        is_md = f.lower().endswith('.md')
+        
+        # 获取链接 (如果是 md，内部会自动转为 html 链接)
+        url = get_web_url(rel_path, is_markdown=is_md)
+        
+        # 设置不同的图标
+        icon = "📝" if is_md else "📄"
+        
+        # 显示文件名 (保持原名，不改后缀，这样你知道它是 md)
+        html += f'<li class="file-item"><span class="icon">{icon}</span><a href="{url}" target="_blank">{f}</a></li>\n'
 
     html += '</ul>'
     return html
 
 def main():
-    print("正在生成暗黑模式 HTML 目录树...")
+    print("正在生成暗黑模式 HTML 目录树 (Markdown 自动渲染版)...")
     
     tree_content = generate_tree_html(".")
     
-    # 暗黑模式 CSS 样式
     full_html = f"""
 <!DOCTYPE html>
 <html lang="zh-CN">
@@ -92,14 +107,14 @@ def main():
     <title>Frontend Index</title>
     <style>
         :root {{
-            --bg-color: #0d1117;       /* GitHub Dark 背景 */
-            --card-bg: #161b22;        /* 卡片深色背景 */
-            --text-color: #c9d1d9;     /* 浅灰文字 */
-            --link-color: #58a6ff;     /* 蓝色链接 */
-            --link-hover: #79c0ff;     /* 悬停亮蓝 */
-            --border-color: #30363d;   /* 边框颜色 */
-            --hover-bg: #21262d;       /* 鼠标悬停背景 */
-            --icon-color: #8b949e;     /* 图标颜色 */
+            --bg-color: #0d1117;
+            --card-bg: #161b22;
+            --text-color: #c9d1d9;
+            --link-color: #58a6ff;
+            --link-hover: #79c0ff;
+            --border-color: #30363d;
+            --hover-bg: #21262d;
+            --icon-color: #8b949e;
         }}
         
         body {{
@@ -144,30 +159,22 @@ def main():
             text-decoration: underline;
         }}
 
-        /* 树状列表样式 */
         ul.tree-list {{
             list-style-type: none;
             padding-left: 18px;
             margin: 0;
-            border-left: 1px solid var(--border-color); /* 添加竖线指引 */
+            border-left: 1px solid var(--border-color);
         }}
         
-        /* 顶层不需要左边框 */
         .container > ul.tree-list {{
             padding-left: 0;
             border-left: none;
         }}
 
-        li {{
-            margin: 2px 0;
-        }}
+        li {{ margin: 2px 0; }}
 
-        .icon {{
-            margin-right: 8px;
-            opacity: 0.8;
-        }}
+        .icon {{ margin-right: 8px; opacity: 0.8; }}
 
-        /* 文件夹摘要 */
         details > summary {{
             cursor: pointer;
             padding: 6px 10px;
@@ -180,7 +187,6 @@ def main():
         
         details > summary::-webkit-details-marker {{ display: none; }}
         
-        /* 自定义箭头 */
         details > summary::before {{
             content: "▶";
             font-size: 10px;
@@ -190,18 +196,15 @@ def main():
             transition: transform 0.2s;
         }}
 
-        details[open] > summary::before {{
-            transform: rotate(90deg);
-        }}
+        details[open] > summary::before {{ transform: rotate(90deg); }}
 
         details > summary:hover {{
             background-color: var(--hover-bg);
             color: #f0f6fc;
         }}
 
-        /* 文件链接 */
         .file-item {{
-            padding-left: 28px; /* 对齐 */
+            padding-left: 28px;
             padding-top: 4px;
             padding-bottom: 4px;
         }}
@@ -232,7 +235,8 @@ def main():
         <h1>🗂️ Frontend Project Index</h1>
         <div class="meta-info">
             <strong>Base URL:</strong> {BASE_URL} <br>
-            <strong>Last Updated:</strong> {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
+            <strong>Last Updated:</strong> {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')} <br>
+            <span style="font-size:12px; opacity:0.7">Note: .md files are automatically linked to their rendered .html versions.</span>
         </div>
         
         {tree_content}
@@ -247,7 +251,7 @@ def main():
 
     with open(OUTPUT_FILENAME, 'w', encoding='utf-8') as f:
         f.write(full_html)
-        print(f"✅ 暗黑模式 HTML 已生成: {OUTPUT_FILENAME}")
+        print(f"✅ 更新完成！Markdown 文件现在指向渲染页面: {OUTPUT_FILENAME}")
 
 if __name__ == "__main__":
     main()

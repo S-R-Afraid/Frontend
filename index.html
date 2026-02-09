@@ -7,14 +7,14 @@
     <title>Frontend Index</title>
     <style>
         :root {
-            --bg-color: #0d1117;       /* GitHub Dark 背景 */
-            --card-bg: #161b22;        /* 卡片深色背景 */
-            --text-color: #c9d1d9;     /* 浅灰文字 */
-            --link-color: #58a6ff;     /* 蓝色链接 */
-            --link-hover: #79c0ff;     /* 悬停亮蓝 */
-            --border-color: #30363d;   /* 边框颜色 */
-            --hover-bg: #21262d;       /* 鼠标悬停背景 */
-            --icon-color: #8b949e;     /* 图标颜色 */
+            --bg-color: #0d1117;
+            --card-bg: #161b22;
+            --text-color: #c9d1d9;
+            --link-color: #58a6ff;
+            --link-hover: #79c0ff;
+            --border-color: #30363d;
+            --hover-bg: #21262d;
+            --icon-color: #8b949e;
         }
         
         body {
@@ -59,30 +59,22 @@
             text-decoration: underline;
         }
 
-        /* 树状列表样式 */
         ul.tree-list {
             list-style-type: none;
             padding-left: 18px;
             margin: 0;
-            border-left: 1px solid var(--border-color); /* 添加竖线指引 */
+            border-left: 1px solid var(--border-color);
         }
         
-        /* 顶层不需要左边框 */
         .container > ul.tree-list {
             padding-left: 0;
             border-left: none;
         }
 
-        li {
-            margin: 2px 0;
-        }
+        li { margin: 2px 0; }
 
-        .icon {
-            margin-right: 8px;
-            opacity: 0.8;
-        }
+        .icon { margin-right: 8px; opacity: 0.8; }
 
-        /* 文件夹摘要 */
         details > summary {
             cursor: pointer;
             padding: 6px 10px;
@@ -95,7 +87,6 @@
         
         details > summary::-webkit-details-marker { display: none; }
         
-        /* 自定义箭头 */
         details > summary::before {
             content: "▶";
             font-size: 10px;
@@ -105,18 +96,15 @@
             transition: transform 0.2s;
         }
 
-        details[open] > summary::before {
-            transform: rotate(90deg);
-        }
+        details[open] > summary::before { transform: rotate(90deg); }
 
         details > summary:hover {
             background-color: var(--hover-bg);
             color: #f0f6fc;
         }
 
-        /* 文件链接 */
         .file-item {
-            padding-left: 28px; /* 对齐 */
+            padding-left: 28px;
             padding-top: 4px;
             padding-bottom: 4px;
         }
@@ -147,7 +135,8 @@
         <h1>🗂️ Frontend Project Index</h1>
         <div class="meta-info">
             <strong>Base URL:</strong> https://s-r-afraid.github.io/Frontend/ <br>
-            <strong>Last Updated:</strong> 2026-02-09 10:09:52
+            <strong>Last Updated:</strong> 2026-02-09 10:27:31 <br>
+            <span style="font-size:12px; opacity:0.7">Note: .md files are automatically linked to their rendered .html versions.</span>
         </div>
         
         <ul class="tree-list">
@@ -157,7 +146,7 @@
                     <summary class="folder-name"><span class="icon">📂</span>ASCII字符画</summary>
                     <ul class="tree-list">
 <li class="file-item"><span class="icon">📄</span><a href="https://s-r-afraid.github.io/Frontend/ASCII%E5%AD%97%E7%AC%A6%E7%94%BB/ASCII%E6%96%87%E4%BB%B6%E7%BB%98%E5%88%B6.html" target="_blank">ASCII文件绘制.html</a></li>
-<li class="file-item"><span class="icon">📄</span><a href="https://s-r-afraid.github.io/Frontend/ASCII%E5%AD%97%E7%AC%A6%E7%94%BB/asc_2_asc_3_binary_protocol_specification.md" target="_blank">asc_2_asc_3_binary_protocol_specification.md</a></li>
+<li class="file-item"><span class="icon">📝</span><a href="https://s-r-afraid.github.io/Frontend/ASCII%E5%AD%97%E7%AC%A6%E7%94%BB/asc_2_asc_3_binary_protocol_specification.html" target="_blank">asc_2_asc_3_binary_protocol_specification.md</a></li>
 <li class="file-item"><span class="icon">📄</span><a href="https://s-r-afraid.github.io/Frontend/ASCII%E5%AD%97%E7%AC%A6%E7%94%BB/asc_player.js" target="_blank">asc_player.js</a></li>
 </ul>
                 </details>
@@ -630,7 +619,7 @@
                 </details>
             </li>
             <li class="file-item"><span class="icon">📄</span><a href="https://s-r-afraid.github.io/Frontend/html-css-java-project-master/LICENSE" target="_blank">LICENSE</a></li>
-<li class="file-item"><span class="icon">📄</span><a href="https://s-r-afraid.github.io/Frontend/html-css-java-project-master/README.en.md" target="_blank">README.en.md</a></li>
+<li class="file-item"><span class="icon">📝</span><a href="https://s-r-afraid.github.io/Frontend/html-css-java-project-master/README.en.html" target="_blank">README.en.md</a></li>
 </ul>
                 </details>
             </li>
@@ -3249,7 +3238,7 @@
                     <ul class="tree-list">
 <li class="file-item"><span class="icon">📄</span><a href="https://s-r-afraid.github.io/Frontend/%E8%87%AA%E5%8A%A8%E7%94%9F%E6%88%90%E8%84%9A%E6%B3%A8%26%E8%84%9A%E6%B3%A8%E9%A2%84%E8%A7%88/FootnoteGenerator.js" target="_blank">FootnoteGenerator.js</a></li>
 <li class="file-item"><span class="icon">📄</span><a href="https://s-r-afraid.github.io/Frontend/%E8%87%AA%E5%8A%A8%E7%94%9F%E6%88%90%E8%84%9A%E6%B3%A8%26%E8%84%9A%E6%B3%A8%E9%A2%84%E8%A7%88/FootnotePreview.js" target="_blank">FootnotePreview.js</a></li>
-<li class="file-item"><span class="icon">📄</span><a href="https://s-r-afraid.github.io/Frontend/%E8%87%AA%E5%8A%A8%E7%94%9F%E6%88%90%E8%84%9A%E6%B3%A8%26%E8%84%9A%E6%B3%A8%E9%A2%84%E8%A7%88/readme.md" target="_blank">readme.md</a></li>
+<li class="file-item"><span class="icon">📝</span><a href="https://s-r-afraid.github.io/Frontend/%E8%87%AA%E5%8A%A8%E7%94%9F%E6%88%90%E8%84%9A%E6%B3%A8%26%E8%84%9A%E6%B3%A8%E9%A2%84%E8%A7%88/readme.html" target="_blank">readme.md</a></li>
 <li class="file-item"><span class="icon">📄</span><a href="https://s-r-afraid.github.io/Frontend/%E8%87%AA%E5%8A%A8%E7%94%9F%E6%88%90%E8%84%9A%E6%B3%A8%26%E8%84%9A%E6%B3%A8%E9%A2%84%E8%A7%88/text.html" target="_blank">text.html</a></li>
 </ul>
                 </details>
@@ -3295,7 +3284,8 @@
 <li class="file-item"><span class="icon">📄</span><a href="https://s-r-afraid.github.io/Frontend/FLIP%E6%B5%81%E4%BD%93%E6%A8%A1%E6%8B%9F.html" target="_blank">FLIP流体模拟.html</a></li>
 <li class="file-item"><span class="icon">📄</span><a href="https://s-r-afraid.github.io/Frontend/Lambda%E8%AE%A1%E7%AE%97.html" target="_blank">Lambda计算.html</a></li>
 <li class="file-item"><span class="icon">📄</span><a href="https://s-r-afraid.github.io/Frontend/MyGO%21%21%21%21%21%20-%20%E6%98%A5%E6%97%A5%E5%BD%B1%20%28MyGO%21%21%21%21%21%20ver.%29.flac" target="_blank">MyGO!!!!! - 春日影 (MyGO!!!!! ver.).flac</a></li>
-<li class="file-item"><span class="icon">📄</span><a href="https://s-r-afraid.github.io/Frontend/git%E6%93%8D%E4%BD%9C.md" target="_blank">git操作.md</a></li>
+<li class="file-item"><span class="icon">📄</span><a href="https://s-r-afraid.github.io/Frontend/generate_full_index.py" target="_blank">generate_full_index.py</a></li>
+<li class="file-item"><span class="icon">📝</span><a href="https://s-r-afraid.github.io/Frontend/git%E6%93%8D%E4%BD%9C.html" target="_blank">git操作.md</a></li>
 <li class="file-item"><span class="icon">📄</span><a href="https://s-r-afraid.github.io/Frontend/index.html" target="_blank">index.html</a></li>
 <li class="file-item"><span class="icon">📄</span><a href="https://s-r-afraid.github.io/Frontend/text.html" target="_blank">text.html</a></li>
 <li class="file-item"><span class="icon">📄</span><a href="https://s-r-afraid.github.io/Frontend/%E4%BB%BF%E6%9D%A5%E8%87%AA%E6%98%9F%E5%B0%98%E6%91%87%E6%9D%86UI.html" target="_blank">仿来自星尘摇杆UI.html</a></li>
